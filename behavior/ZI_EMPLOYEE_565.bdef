@@ -1,0 +1,27 @@
+managed implementation in class zbp_i_employee_details unique;
+//strict ( 2 );
+
+define behavior for ZI_EMPLOYEE_DETAILS
+persistent table zemply_mng_dbtab
+lock master
+authorization master ( instance )
+{
+  create;
+  update;
+  delete;
+
+  field ( readonly ) Empid;
+
+  // Automatically sets Status = 'ACTIVE' when a new employee is created
+  determination setDefaultStatus on modify
+  {
+    create;
+  }
+
+  // Validates Salary is between 1 and 9,999,999 before saving
+  validation validateSalary on save
+  {
+    create;
+    update;
+  }
+}
