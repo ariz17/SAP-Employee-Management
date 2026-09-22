@@ -12,6 +12,13 @@ export function LoginScreen({ onLogin }) {
       setError('Please enter both User ID and Password.');
       return;
     }
+
+    if (userId.trim().toLowerCase() !== 'ariz17' || password !== 'arbab786') {
+      setError('Invalid User ID or Password. Please try again.');
+      return;
+    }
+
+    setError('');
     // Accept credentials
     onLogin({ userId: userId.trim() });
   };
@@ -96,7 +103,7 @@ export function LoginScreen({ onLogin }) {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '16px' }}>
+          <div className="form-group" style={{ marginBottom: '20px' }}>
             <label htmlFor="login-password" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Password
             </label>
@@ -112,19 +119,6 @@ export function LoginScreen({ onLogin }) {
                 required
               />
             </div>
-          </div>
-
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '8px 12px',
-            fontSize: '0.74rem',
-            color: 'var(--text-muted)',
-            marginBottom: '20px',
-            textAlign: 'center'
-          }}>
-            Demo credentials: <code>ariz17</code> / <code>sap123</code>
           </div>
 
           <button 
