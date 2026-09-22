@@ -1,0 +1,20 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Employee Leave Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+define view entity ZI_EMPLOYEE_LEAVE
+  as select from zemply_leave_tab
+  association to parent ZI_EMPLOYEE_DETAILS as _Employee on $projection.Empid = _Employee.Empid
+{
+  key leave_id   as LeaveId,
+      empid      as Empid,
+      leave_type as LeaveType,
+      start_date as StartDate,
+      end_date   as EndDate,
+      days_count as DaysCount,
+      reason     as Reason,
+      status     as Status,
+
+      /* Associations */
+      _Employee
+}

@@ -1,0 +1,64 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Employee Leave Projection View'
+@Metadata.ignorePropagatedAnnotations: true
+
+@UI.headerInfo: {
+  typeName: 'Leave Request',
+  typeNamePlural: 'Leave Requests',
+  title: { type: #STANDARD, value: 'LeaveType' },
+  description: { type: #STANDARD, value: 'Status' }
+}
+
+define view entity ZC_EMPLOYEE_LEAVE
+  as projection on ZI_EMPLOYEE_LEAVE
+{
+  @UI.facet: [
+    {
+      id:            'LeaveDetails',
+      purpose:       #STANDARD,
+      type:          #IDENTIFICATION_REFERENCE,
+      label:         'Leave Details',
+      position:      10
+    }
+  ]
+
+  @UI.lineItem:       [{ position: 10 }]
+  @UI.identification: [{ position: 10 }]
+  key LeaveId,
+
+  @UI.lineItem:       [{ position: 20 }]
+  @UI.identification: [{ position: 20 }]
+  Empid,
+
+  @UI.lineItem:       [{ position: 30 }]
+  @UI.identification: [{ position: 30 }]
+  @UI.selectionField: [{ position: 10 }]
+  LeaveType,
+
+  @UI.lineItem:       [{ position: 40 }]
+  @UI.identification: [{ position: 40 }]
+  StartDate,
+
+  @UI.lineItem:       [{ position: 50 }]
+  @UI.identification: [{ position: 50 }]
+  EndDate,
+
+  @UI.lineItem:       [{ position: 60 }]
+  @UI.identification: [{ position: 60 }]
+  DaysCount,
+
+  @UI.lineItem:       [{ position: 70 }]
+  @UI.identification: [{ position: 70 }]
+  Reason,
+
+  @UI.lineItem:       [
+    { position: 80 },
+    { type: #FOR_ACTION, dataAction: 'approveLeave', label: 'Approve Leave' }
+  ]
+  @UI.identification: [{ position: 80 }]
+  @UI.selectionField: [{ position: 20 }]
+  Status,
+
+  /* Associations */
+  _Employee : redirected to parent ZC_EMPLOYEE_DETAILS
+}

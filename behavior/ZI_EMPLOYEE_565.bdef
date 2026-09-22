@@ -1,6 +1,9 @@
 managed implementation in class zbp_i_employee_details unique;
-//strict ( 2 );
+strict ( 2 );
 
+/* ==========================================================================
+   Root Entity: Employee
+   ========================================================================== */
 define behavior for ZI_EMPLOYEE_DETAILS
 persistent table zemply_mng_dbtab
 lock master
@@ -12,14 +15,54 @@ authorization master ( instance )
 
   field ( readonly ) Empid;
 
-  // Automatically sets Status = 'ACTIVE' when a new employee is created
+  // Composition to child Leave entity
+  association _Leave { create; }
+
+  // Custom Business Actions
+  action giveRaise parameter ZD_RAISE_PARAM result [1] $self;
+  action changeStatus result [1] $self;
+
+  // Determinations
   determination setDefaultStatus on modify
   {
     create;
   }
 
-  // Validates Salary is between 1 and 9,999,999 before saving
+  // Validations
   validation validateSalary on save
+  {
+    create;
+    update;
+  }
+}
+
+/* ==========================================================================
+   Child Entity: Leave Request (Parent-Child Composition)
+   ========================================================================== */
+define behavior for ZI_EMPLOYEE_LEAVE
+persistent table zemply_leave_tab
+lock dependent by _Employee
+authorization dependent by _Employee
+{
+  update;
+  delete;
+
+  field ( readonly ) LeaveId, Empid;
+
+  // Association back to parent
+  association _Employee;
+
+  // Custom Business Action for Manager
+  action approveLeave result [1] $self;
+
+  // Determination: Calculate duration of leave automatically
+  determination calculateLeaveDays on modify
+  {
+    field StartDate, EndDate;
+  }
+
+  // Validation: Ensure StartDate <= EndDate and not in past
+  validation validateDates on save
   {
     create;
     update;

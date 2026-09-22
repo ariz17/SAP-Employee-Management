@@ -1,0 +1,9 @@
+@EndUserText.label: 'Salary Raise Parameter'
+define abstract entity ZD_RAISE_PARAM
+{
+  @EndUserText.label: 'Percentage Raise (%)'
+  percentage_raise : abap.dec(5,2);
+
+  @EndUserText.label: 'Reason for Revision'
+  revision_reason  : abap.char(100);
+}

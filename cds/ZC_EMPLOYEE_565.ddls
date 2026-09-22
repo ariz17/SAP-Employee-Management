@@ -11,46 +11,63 @@
 
 define root view entity ZC_EMPLOYEE_DETAILS
   provider contract transactional_query
-    as projection on ZI_EMPLOYEE_DETAILS
+  as projection on ZI_EMPLOYEE_DETAILS
 {
   @UI.facet: [
     {
-      id:       'EmployeeInfo',
-      purpose:  #STANDARD,
-      type:     #IDENTIFICATION_REFERENCE,
-      label:    'Employee Information',
-      position: 10
+      id:            'EmployeeInfo',
+      purpose:       #STANDARD,
+      type:          #IDENTIFICATION_REFERENCE,
+      label:         'Employee Details',
+      position:      10
+    },
+    {
+      id:            'EmployeeLeaves',
+      purpose:       #STANDARD,
+      type:          #LINEITEM_REFERENCE,
+      label:         'Leave & Time-Off History',
+      position:      20,
+      targetElement: '_Leave'
     }
   ]
 
-  @UI.lineItem:      [{ position: 10 }]
-  @UI.identification:[{ position: 10 }]
+  @UI.lineItem:       [{ position: 10 }]
+  @UI.identification: [{ position: 10 }]
   key Empid,
 
-  @UI.lineItem:      [{ position: 20 }]
-  @UI.identification:[{ position: 20 }]
-  @UI.selectionField:[{ position: 10 }]
+  @UI.lineItem:       [{ position: 20 }]
+  @UI.identification: [{ position: 20 }]
+  @UI.selectionField: [{ position: 10 }]
   Name,
 
-  @UI.lineItem:      [{ position: 30 }]
-  @UI.identification:[{ position: 30 }]
+  @UI.lineItem:       [{ position: 30 }]
+  @UI.identification: [{ position: 30 }]
   Email,
 
-  @UI.lineItem:      [{ position: 40 }]
-  @UI.identification:[{ position: 40 }]
-  @UI.selectionField:[{ position: 20 }]
+  @UI.lineItem:       [{ position: 40 }]
+  @UI.identification: [{ position: 40 }]
+  @UI.selectionField: [{ position: 20 }]
   Dept,
 
-  @UI.lineItem:      [{ position: 50 }]
-  @UI.identification:[{ position: 50 }]
+  @UI.lineItem:       [
+    { position: 50 },
+    { type: #FOR_ACTION, dataAction: 'giveRaise', label: 'Give Salary Raise' }
+  ]
+  @UI.identification: [{ position: 50 }]
   Salary,
 
-  @UI.lineItem:      [{ position: 60 }]
-  @UI.identification:[{ position: 60 }]
+  @UI.lineItem:       [{ position: 60 }]
+  @UI.identification: [{ position: 60 }]
   Joindate,
 
-  @UI.lineItem:      [{ position: 70 }]
-  @UI.identification:[{ position: 70 }]
-  @UI.selectionField:[{ position: 30 }]
-  Status
+  @UI.lineItem:       [
+    { position: 70 },
+    { type: #FOR_ACTION, dataAction: 'changeStatus', label: 'Toggle Status' }
+  ]
+  @UI.identification: [{ position: 70 }]
+  @UI.selectionField: [{ position: 30 }]
+  Status,
+
+  /* Associations */
+  _Leave : redirected to composition child ZC_EMPLOYEE_LEAVE
 }

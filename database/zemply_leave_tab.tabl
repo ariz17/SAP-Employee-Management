@@ -1,0 +1,18 @@
+@EndUserText.label : 'Employee Leave Requests Table'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zemply_leave_tab {
+
+  key client     : abap.clnt not null;
+  key leave_id   : abap.numc(8) not null;
+  empid          : abap.numc(6) not null;
+  leave_type     : abap.char(20);
+  start_date     : abap.dats;
+  end_date       : abap.dats;
+  days_count     : abap.int4;
+  reason         : abap.char(100);
+  status         : abap.char(15);
+
+}

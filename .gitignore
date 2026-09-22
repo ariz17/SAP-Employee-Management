@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Production build outputs
+dist/
+frontend/dist/
+
+# Logs and environment
+*.log
+.DS_Store
+.env
+.env.local
