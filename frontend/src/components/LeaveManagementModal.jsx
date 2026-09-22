@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Calendar, Check, AlertCircle, PlusCircle, Clock, ShieldCheck } from 'lucide-react';
+import { X, Calendar, Check, AlertCircle, PlusCircle, Clock, ShieldCheck, XCircle } from 'lucide-react';
 
-export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave, onAddLeave }) {
+export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave, onRejectLeave, onAddLeave }) {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [leaveType, setLeaveType] = useState('Annual Vacation');
   const [startDate, setStartDate] = useState('');
@@ -179,23 +179,52 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
                       {leave.StartDate} ➔ {leave.EndDate}
                     </td>
                     <td style={{ padding: '10px 14px' }}>
-                      <span className={`badge ${leave.Status === 'APPROVED' ? 'badge-active' : 'badge-leave'}`}>
-                        {leave.Status}
-                      </span>
+                      {leave.Status === 'APPROVED' && (
+                        <span className="badge badge-active">Approved</span>
+                      )}
+                      {leave.Status === 'PENDING' && (
+                        <span className="badge badge-leave" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                          Pending
+                        </span>
+                      )}
+                      {leave.Status === 'REJECTED' && (
+                        <span className="badge badge-inactive" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185', border: '1px solid rgba(244, 63, 94, 0.3)' }}>
+                          Rejected
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                       {leave.Status === 'PENDING' ? (
-                        <button 
-                          className="btn btn-sm btn-primary"
-                          onClick={() => onApproveLeave(employee.Empid, leave.LeaveId)}
-                          title="Execute RAP Action approveLeave"
-                        >
-                          <Check size={12} />
-                          <span>Approve (RAP)</span>
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button 
+                            className="btn btn-sm btn-primary"
+                            onClick={() => onApproveLeave(employee.Empid, leave.LeaveId)}
+                            title="Execute RAP Action approveLeave"
+                            style={{ background: '#059669', borderColor: '#059669' }}
+                          >
+                            <Check size={12} />
+                            <span>Accept</span>
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-danger"
+                            onClick={() => onRejectLeave(employee.Empid, leave.LeaveId)}
+                            title="Reject leave request"
+                          >
+                            <X size={12} />
+                            <span>Reject</span>
+                          </button>
+                        </div>
                       ) : (
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <ShieldCheck size={14} style={{ color: '#10b981' }} /> Approved
+                          {leave.Status === 'APPROVED' ? (
+                            <>
+                              <ShieldCheck size={14} style={{ color: '#10b981' }} /> Approved
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={14} style={{ color: '#fb7185' }} /> Rejected
+                            </>
+                          )}
                         </span>
                       )}
                     </td>

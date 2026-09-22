@@ -1,26 +1,50 @@
 import React, { useState } from 'react';
-import { Database, Lock, User, Key, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Database, Lock, User, Key, ArrowRight, ShieldCheck, UserCheck, Shield } from 'lucide-react';
+import { authenticateCredentials } from '../utils/jwtAuth';
 
-export function LoginScreen({ onLogin }) {
+export function LoginScreen({ onLogin, employees = [] }) {
+  const [activeTab, setActiveTab] = useState('admin'); // 'admin' | 'employee'
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    setError('');
+    setUserId('');
+    setPassword('');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setError('');
+
     if (!userId.trim() || !password.trim()) {
       setError('Please enter both User ID and Password.');
       return;
     }
 
-    if (userId.trim().toLowerCase() !== 'ariz17' || password !== 'arbab786') {
-      setError('Invalid User ID or Password. Please try again.');
-      return;
+    if (activeTab === 'admin') {
+      if (userId.trim().toLowerCase() !== 'ariz17' || password !== 'arbab786') {
+        setError('Invalid User ID or Password.');
+        return;
+      }
     }
 
-    setError('');
-    // Accept credentials
-    onLogin({ userId: userId.trim() });
+    const authResult = authenticateCredentials({
+      userId,
+      password,
+      employees
+    });
+
+    if (authResult.success) {
+      onLogin({
+        token: authResult.token,
+        user: authResult.user
+      });
+    } else {
+      setError(authResult.error || 'Authentication failed. Please check your credentials.');
+    }
   };
 
   return (
@@ -34,7 +58,7 @@ export function LoginScreen({ onLogin }) {
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '440px',
+        maxWidth: '460px',
         background: 'rgba(17, 24, 39, 0.9)',
         border: '1px solid var(--border-active)',
         borderRadius: 'var(--radius-lg)',
@@ -43,7 +67,7 @@ export function LoginScreen({ onLogin }) {
         backdropFilter: 'blur(16px)'
       }}>
         {/* Brand Icon & Heading */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
             width: '56px',
             height: '56px',
@@ -62,8 +86,66 @@ export function LoginScreen({ onLogin }) {
             SAP Cloud Sign In
           </h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Enterprise Workforce & Leave Central (BTP)
+            Workforce Central • JWT-Protected RBAC Authorization
           </p>
+        </div>
+
+        {/* Role Selection Tabs */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '6px',
+          background: 'rgba(0, 0, 0, 0.35)',
+          padding: '4px',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: '20px',
+          border: '1px solid var(--border-subtle)'
+        }}>
+          <button
+            type="button"
+            onClick={() => handleTabSwitch('admin')}
+            style={{
+              padding: '10px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'admin' ? 'var(--sap-blue)' : 'transparent',
+              color: activeTab === 'admin' ? 'white' : 'var(--text-muted)'
+            }}
+          >
+            <Shield size={15} />
+            <span>Admin Portal</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabSwitch('employee')}
+            style={{
+              padding: '10px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'employee' ? '#059669' : 'transparent',
+              color: activeTab === 'employee' ? 'white' : 'var(--text-muted)'
+            }}
+          >
+            <UserCheck size={15} />
+            <span>Employee Self-Service</span>
+          </button>
         </div>
 
         {error && (
@@ -87,7 +169,7 @@ export function LoginScreen({ onLogin }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="login-userid" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              SAP User ID
+              {activeTab === 'admin' ? 'Admin User ID' : 'SAP Employee ID / Email'}
             </label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
@@ -95,7 +177,7 @@ export function LoginScreen({ onLogin }) {
                 id="login-userid"
                 type="text" 
                 style={{ paddingLeft: '38px' }}
-                placeholder="Enter User ID"
+                placeholder={activeTab === 'admin' ? 'Enter Admin User ID' : 'Enter Employee ID'}
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
@@ -125,16 +207,22 @@ export function LoginScreen({ onLogin }) {
             id="btn-login-submit"
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              fontSize: '0.95rem',
+              background: activeTab === 'admin' ? 'var(--sap-blue)' : '#059669',
+              borderColor: activeTab === 'admin' ? 'var(--sap-blue)' : '#059669'
+            }}
           >
-            <span>Authenticate with SAP BTP</span>
+            <span>Authenticate & Issue JWT ({activeTab === 'admin' ? 'Admin' : 'Employee'})</span>
             <ArrowRight size={16} />
           </button>
         </form>
 
         <div style={{ marginTop: '20px', fontSize: '0.72rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
           <ShieldCheck size={14} style={{ color: '#10b981' }} />
-          <span>Secured via SAP Cloud Identity Services (IAS) Simulation</span>
+          <span>Secured via RFC 7519 JSON Web Token (JWT) Bearer Auth</span>
         </div>
       </div>
     </div>
