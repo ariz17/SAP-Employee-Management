@@ -92,7 +92,7 @@ export function SapArchitectureModal({ isOpen, onClose }) {
             </div>
 
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              💡 <strong>Interview Tip:</strong> Mention how lifecycle operations on the root cascade to the children (e.g. deleting an employee automatically handles lock/draft state of related leave items).
+              <strong>Architectural Note:</strong> Lifecycle and locking operations on the root entity cascade automatically to associated children (e.g. deleting an employee cleans up child leave items, while root locking ensures transactional integrity).
             </div>
           </div>
         )}
@@ -116,7 +116,7 @@ export function SapArchitectureModal({ isOpen, onClose }) {
                 <ul style={{ fontSize: '0.78rem', color: 'var(--text-muted)', paddingLeft: '16px', lineHeight: 1.6 }}>
                   <li><code>determination setDefaultStatus</code>: Auto-populates <code>Status = 'ACTIVE'</code> on create.</li>
                   <li><code>determination calculateLeaveDays</code>: Calculates duration in days based on start and end dates.</li>
-                  <li><code>validation validateSalary</code>: Checks salary is between $1 and $9,999,999 on save.</li>
+                  <li><code>validation validateSalary</code>: Checks salary is between ₹1 and ₹99,99,999 on save.</li>
                   <li><code>validation validateDates</code>: Rejects request if Start Date &gt; End Date.</li>
                 </ul>
               </div>
@@ -177,7 +177,7 @@ export function SapArchitectureModal({ isOpen, onClose }) {
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Empid": "100101",<br />
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Name": "Arbab Rizvi",<br />
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Dept": "Engineering",<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Salary": 95000.00,<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Salary": 1250000.00,<br />
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Status": "ACTIVE",<br />
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"_Leave": [<br />
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#123; "LeaveId": "80010001", "LeaveType": "Annual Vacation", "DaysCount": 5, "Status": "APPROVED" &#125;<br />

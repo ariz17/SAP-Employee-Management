@@ -43,7 +43,7 @@ export function GiveRaiseModal({ isOpen, onClose, employee, onApplyRaise }) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Current Base Salary</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>${currentSalary.toLocaleString()}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>₹{currentSalary.toLocaleString('en-IN')}</span>
           </div>
         </div>
 
@@ -97,12 +97,12 @@ export function GiveRaiseModal({ isOpen, onClose, employee, onApplyRaise }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
               <div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Old Salary</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '1rem' }}>${currentSalary.toLocaleString()}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '1rem' }}>₹{currentSalary.toLocaleString('en-IN')}</div>
               </div>
               <ArrowRight size={20} style={{ color: 'var(--sap-blue-light)' }} />
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#34d399' }}>New Salary (+${incrementAmount.toLocaleString()})</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.2rem', color: '#34d399' }}>${newSalary.toLocaleString()}</div>
+                <div style={{ fontSize: '0.75rem', color: '#34d399' }}>New Salary (+₹{incrementAmount.toLocaleString('en-IN')})</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.2rem', color: '#34d399' }}>₹{newSalary.toLocaleString('en-IN')}</div>
               </div>
             </div>
           </div>

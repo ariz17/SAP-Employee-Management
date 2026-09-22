@@ -113,18 +113,18 @@ export function AddEmployeeModal({ isOpen, onClose, onAddEmployee }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="input-emp-salary">Base Salary (Annual USD) *</label>
+            <label htmlFor="input-emp-salary">Base Salary (Annual INR - ₹) *</label>
             <input 
               id="input-emp-salary"
               type="number" 
-              placeholder="e.g. 85000" 
+              placeholder="e.g. 1200000" 
               value={salary} 
               onChange={(e) => setSalary(e.target.value)} 
-              step="1000"
+              step="10000"
               required 
             />
             <small style={{ color: 'var(--text-subtle)', fontSize: '0.72rem', marginTop: '4px', display: 'block' }}>
-              Checked by RAP Save Validation: <code>validateSalary</code> (range: $1 - $9,999,999)
+              Checked by RAP Save Validation: <code>validateSalary</code> (range: ₹1 - ₹99,99,999)
             </small>
           </div>
 

@@ -10,8 +10,33 @@ import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { GiveRaiseModal } from './components/GiveRaiseModal';
 import { LeaveManagementModal } from './components/LeaveManagementModal';
 import { SapArchitectureModal } from './components/SapArchitectureModal';
+import { LoginScreen } from './components/LoginScreen';
 
 export function App() {
+  // Authentication session state
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('sap_session_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLogin = (userData) => {
+    setCurrentUser(userData);
+    try {
+      sessionStorage.setItem('sap_session_user', JSON.stringify(userData));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    sessionStorage.removeItem('sap_session_user');
+  };
+
   // Load persisted state or fallback to seed data
   const [employees, setEmployees] = useState(() => {
     try {
@@ -164,10 +189,17 @@ export function App() {
     });
   }, [employees, searchTerm, selectedDept, selectedStatus]);
 
+  // If not authenticated with SAP Cloud, show login screen
+  if (!currentUser) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <div className="app-container">
       {/* App Header */}
       <Header 
+        currentUser={currentUser}
+        onLogout={handleLogout}
         onOpenArchitecture={() => setIsArchOpen(true)}
         onOpenAddEmployee={() => setIsAddOpen(true)}
       />
@@ -232,7 +264,7 @@ export function App() {
         <div className="table-header-title">
           <h2>
             <Building2 size={18} style={{ color: 'var(--sap-blue-light)' }} />
-            <span>Employee Master Records (<code>ZC_EMPLOYEE_DETAILS</code>)</span>
+            <span>Employee Records (<code>ZC_EMPLOYEE_DETAILS</code>)</span>
           </h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Showing {filteredEmployees.length} of {employees.length} records
@@ -274,7 +306,7 @@ export function App() {
                       <span className="badge badge-dept">{emp.Dept}</span>
                     </td>
                     <td>
-                      <span className="salary-tag">${(parseFloat(emp.Salary) || 0).toLocaleString()}</span>
+                      <span className="salary-tag">₹{(parseFloat(emp.Salary) || 0).toLocaleString('en-IN')}</span>
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                       {emp.Joindate}

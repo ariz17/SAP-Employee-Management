@@ -8,7 +8,7 @@ export const INITIAL_EMPLOYEES = [
     Name: "Arbab Rizvi",
     Email: "arbab.rizvi@enterprise.sap",
     Dept: "Engineering",
-    Salary: 95000.00,
+    Salary: 1250000.00,
     Joindate: "2023-01-15",
     Status: "ACTIVE",
     Leaves: [
@@ -29,7 +29,7 @@ export const INITIAL_EMPLOYEES = [
     Name: "Sarah Jenkins",
     Email: "s.jenkins@enterprise.sap",
     Dept: "Finance",
-    Salary: 88000.00,
+    Salary: 980000.00,
     Joindate: "2022-06-10",
     Status: "ACTIVE",
     Leaves: [
@@ -50,7 +50,7 @@ export const INITIAL_EMPLOYEES = [
     Name: "Marcus Vance",
     Email: "m.vance@enterprise.sap",
     Dept: "Product",
-    Salary: 105000.00,
+    Salary: 1400000.00,
     Joindate: "2021-11-01",
     Status: "ON_LEAVE",
     Leaves: [
@@ -71,7 +71,7 @@ export const INITIAL_EMPLOYEES = [
     Name: "Elena Rostova",
     Email: "e.rostova@enterprise.sap",
     Dept: "Human Resources",
-    Salary: 72000.00,
+    Salary: 750000.00,
     Joindate: "2023-08-20",
     Status: "ACTIVE",
     Leaves: []
@@ -81,7 +81,7 @@ export const INITIAL_EMPLOYEES = [
     Name: "Devon Chen",
     Email: "d.chen@enterprise.sap",
     Dept: "Engineering",
-    Salary: 112000.00,
+    Salary: 1600000.00,
     Joindate: "2020-04-12",
     Status: "ACTIVE",
     Leaves: [

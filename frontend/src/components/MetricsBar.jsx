@@ -55,8 +55,8 @@ export function MetricsBar({ employees }) {
         </div>
         <div className="metric-info">
           <span className="metric-label">Annual Payroll</span>
-          <span className="metric-value">${(totalPayroll / 1000).toFixed(1)}k</span>
-          <span className="metric-subtext">Avg: ${avgSalary.toLocaleString()}/yr</span>
+          <span className="metric-value">₹{(totalPayroll / 100000).toFixed(1)}L</span>
+          <span className="metric-subtext">Avg: ₹{avgSalary.toLocaleString('en-IN')}/yr</span>
         </div>
       </div>
     </div>
