@@ -26,8 +26,8 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     Empid: "100102",
-    Name: "Sarah Jenkins",
-    Email: "s.jenkins@enterprise.sap",
+    Name: "Mridul Tripathi",
+    Email: "mridul.tripathi@enterprise.sap",
     Dept: "Finance",
     Salary: 980000.00,
     Joindate: "2022-06-10",
@@ -47,8 +47,8 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     Empid: "100103",
-    Name: "Marcus Vance",
-    Email: "m.vance@enterprise.sap",
+    Name: "Harshit Sharma",
+    Email: "harshit.sharma@enterprise.sap",
     Dept: "Product",
     Salary: 1400000.00,
     Joindate: "2021-11-01",
@@ -68,8 +68,8 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     Empid: "100104",
-    Name: "Elena Rostova",
-    Email: "e.rostova@enterprise.sap",
+    Name: "Mohd Faiz",
+    Email: "mohd.faiz@enterprise.sap",
     Dept: "Human Resources",
     Salary: 750000.00,
     Joindate: "2023-08-20",
@@ -78,8 +78,8 @@ export const INITIAL_EMPLOYEES = [
   },
   {
     Empid: "100105",
-    Name: "Devon Chen",
-    Email: "d.chen@enterprise.sap",
+    Name: "Kshitiz Goel",
+    Email: "kshitiz.goel@enterprise.sap",
     Dept: "Engineering",
     Salary: 1600000.00,
     Joindate: "2020-04-12",

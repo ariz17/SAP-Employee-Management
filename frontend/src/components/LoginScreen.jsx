@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Database, Lock, User, Key, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { Database, Lock, User, Key, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export function LoginScreen({ onLogin }) {
-  const [userId, setUserId] = useState('ariz17');
-  const [password, setPassword] = useState('sap123');
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -12,14 +12,8 @@ export function LoginScreen({ onLogin }) {
       setError('Please enter both User ID and Password.');
       return;
     }
-    // Accept valid credentials or demo credentials
+    // Accept credentials
     onLogin({ userId: userId.trim() });
-  };
-
-  const handleQuickDemo = () => {
-    setUserId('recruiter_guest');
-    setPassword('sap123');
-    onLogin({ userId: 'recruiter_guest' });
   };
 
   return (
@@ -86,7 +80,7 @@ export function LoginScreen({ onLogin }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="login-userid" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              SAP User ID / S-User
+              SAP User ID
             </label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
@@ -94,7 +88,7 @@ export function LoginScreen({ onLogin }) {
                 id="login-userid"
                 type="text" 
                 style={{ paddingLeft: '38px' }}
-                placeholder="e.g. ariz17 or S0021489"
+                placeholder="Enter User ID"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
@@ -102,7 +96,7 @@ export function LoginScreen({ onLogin }) {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '24px' }}>
+          <div className="form-group" style={{ marginBottom: '16px' }}>
             <label htmlFor="login-password" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Password
             </label>
@@ -112,12 +106,25 @@ export function LoginScreen({ onLogin }) {
                 id="login-password"
                 type="password" 
                 style={{ paddingLeft: '38px' }}
-                placeholder="Enter password"
+                placeholder="Enter Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
+          </div>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '8px 12px',
+            fontSize: '0.74rem',
+            color: 'var(--text-muted)',
+            marginBottom: '20px',
+            textAlign: 'center'
+          }}>
+            Demo credentials: <code>ariz17</code> / <code>sap123</code>
           </div>
 
           <button 
@@ -131,21 +138,9 @@ export function LoginScreen({ onLogin }) {
           </button>
         </form>
 
-        {/* Demo Fast Access Pill */}
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button 
-            type="button" 
-            onClick={handleQuickDemo}
-            className="btn btn-secondary btn-sm"
-            style={{ width: '100%', padding: '9px', fontSize: '0.8rem', borderColor: 'rgba(56, 189, 248, 0.3)' }}
-          >
-            <Sparkles size={14} style={{ color: 'var(--sap-blue-light)' }} />
-            <span>1-Click Recruiter Demo Access</span>
-          </button>
-          <div style={{ marginTop: '14px', fontSize: '0.72rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            <ShieldCheck size={14} style={{ color: '#10b981' }} />
-            <span>Secured via SAP Cloud Identity Services (IAS) Simulation</span>
-          </div>
+        <div style={{ marginTop: '20px', fontSize: '0.72rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+          <ShieldCheck size={14} style={{ color: '#10b981' }} />
+          <span>Secured via SAP Cloud Identity Services (IAS) Simulation</span>
         </div>
       </div>
     </div>
