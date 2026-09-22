@@ -132,15 +132,25 @@ export function authenticateCredentials({ userId, password, employees = [] }) {
   }
 
   // 2. Employee Authentication
-  // Match by Empid (e.g. 100101) or Email
-  const emp = employees.find(
-    e => e.Empid.toLowerCase() === cleanId.toLowerCase() ||
-         e.Email.toLowerCase() === cleanId.toLowerCase()
-  );
+  // Match by Empid (e.g. 100101), Email, or Name (e.g. "mridul", "harshit", "arbab", etc.)
+  const target = cleanId.toLowerCase();
+  const emp = employees.find(e => {
+    const idMatch = e.Empid.toLowerCase() === target;
+    const emailMatch = e.Email.toLowerCase() === target || e.Email.toLowerCase().startsWith(target);
+    const fullNameMatch = e.Name.toLowerCase() === target || e.Name.toLowerCase().includes(target);
+    const firstNameMatch = e.Name.toLowerCase().split(' ')[0] === target;
+    return idMatch || emailMatch || fullNameMatch || firstNameMatch;
+  });
 
   if (emp) {
-    // Accepted passwords for employees: 'emp123', 'arbab786', or employee id
-    if (cleanPass === 'emp123' || cleanPass === emp.Empid || cleanPass === 'arbab786' || cleanPass === 'password') {
+    const firstName = emp.Name.toLowerCase().split(' ')[0];
+    const validPasswords = [
+      'emp123',
+      `${firstName}123`,
+      emp.Empid
+    ];
+
+    if (validPasswords.includes(cleanPass)) {
       const payload = {
         userId: emp.Empid,
         empid: emp.Empid,

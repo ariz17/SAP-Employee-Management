@@ -393,7 +393,7 @@ export function App() {
                 <div className="table-header-title">
                   <h2>
                     <Building2 size={18} style={{ color: 'var(--sap-blue-light)' }} />
-                    <span>Workforce Master Records (<code>ZC_EMPLOYEE_DETAILS</code>)</span>
+                    <span>Workforce Records (<code>ZC_EMPLOYEE_DETAILS</code>)</span>
                   </h2>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Showing {filteredEmployees.length} of {employees.length} records

@@ -169,7 +169,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="login-userid" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {activeTab === 'admin' ? 'Admin User ID' : 'SAP Employee ID / Email'}
+              {activeTab === 'admin' ? 'Admin User ID' : 'SAP Employee ID or Name'}
             </label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
@@ -177,7 +177,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
                 id="login-userid"
                 type="text" 
                 style={{ paddingLeft: '38px' }}
-                placeholder={activeTab === 'admin' ? 'Enter Admin User ID' : 'Enter Employee ID'}
+                placeholder={activeTab === 'admin' ? 'Enter Admin User ID' : 'Enter Employee ID or Name (e.g. mridul)'}
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
