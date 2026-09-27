@@ -1,18 +1,33 @@
 import React, { useState } from 'react';
-import { Database, Lock, User, Key, ArrowRight, ShieldCheck, UserCheck, Shield } from 'lucide-react';
+import { Database, User, Lock, Eye, EyeOff, Check, ArrowRight, Shield, UserCheck } from 'lucide-react';
 import { authenticateCredentials } from '../utils/jwtAuth';
 
 export function LoginScreen({ onLogin, employees = [] }) {
-  const [activeTab, setActiveTab] = useState('admin'); // 'admin' | 'employee'
-  const [userId, setUserId] = useState('');
-  const [password, setPassword] = useState('');
+  const [userId, setUserId] = useState('ariz17');
+  const [password, setPassword] = useState('arbab786');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    setError('');
-    setUserId('');
-    setPassword('');
+  const handleQuickLogin = (role) => {
+    if (role === 'admin') {
+      const auth = authenticateCredentials({
+        userId: 'ariz17',
+        password: 'arbab786',
+        employees
+      });
+      if (auth.success) {
+        onLogin({ token: auth.token, user: auth.user });
+      }
+    } else {
+      const auth = authenticateCredentials({
+        userId: '100101',
+        password: 'password123',
+        employees
+      });
+      if (auth.success) {
+        onLogin({ token: auth.token, user: auth.user });
+      }
+    }
   };
 
   const handleSubmit = (e) => {
@@ -20,209 +35,153 @@ export function LoginScreen({ onLogin, employees = [] }) {
     setError('');
 
     if (!userId.trim() || !password.trim()) {
-      setError('Please enter both User ID and Password.');
+      setError('Please enter your username and password.');
       return;
     }
 
-    if (activeTab === 'admin') {
-      if (userId.trim().toLowerCase() !== 'ariz17' || password !== 'arbab786') {
-        setError('Invalid User ID or Password.');
-        return;
-      }
-    }
-
-    const authResult = authenticateCredentials({
-      userId,
-      password,
+    const auth = authenticateCredentials({
+      userId: userId.trim(),
+      password: password.trim(),
       employees
     });
 
-    if (authResult.success) {
-      onLogin({
-        token: authResult.token,
-        user: authResult.user
-      });
+    if (auth.success) {
+      onLogin({ token: auth.token, user: auth.user });
     } else {
-      setError(authResult.error || 'Authentication failed. Please check your credentials.');
+      setError(auth.error || 'Invalid credentials. Use Quick Demo buttons above.');
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-      background: 'radial-gradient(circle at 50% 20%, rgba(10, 110, 209, 0.18) 0%, transparent 50%), #070b14'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '460px',
-        background: 'rgba(17, 24, 39, 0.9)',
-        border: '1px solid var(--border-active)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '36px 32px',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), var(--shadow-glow)',
-        backdropFilter: 'blur(16px)'
-      }}>
-        {/* Brand Icon & Heading */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            margin: '0 auto 16px',
-            background: 'linear-gradient(135deg, var(--sap-blue), #38bdf8)',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            boxShadow: '0 8px 24px var(--sap-blue-glow)'
-          }}>
-            <Database size={30} />
+    <div className="login-page-bg">
+      <div className="login-card-container">
+        {/* Left Side: Brand Panel (Matches Screenshot 5) */}
+        <div className="login-brand-panel">
+          <div className="login-brand-icon-box">
+            <Database size={32} />
           </div>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc' }}>
-            SAP Cloud Sign In
-          </h2>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Workforce Central • JWT-Protected RBAC Authorization
+
+          <h1 className="login-brand-title">
+            SAP Workforce<br />Management System
+          </h1>
+
+          <p className="login-brand-desc">
+            Connecting enterprise workforce operations, department analytics, and leave approvals through one secure SAP RAP platform.
           </p>
-        </div>
 
-        {/* Role Selection Tabs */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '6px',
-          background: 'rgba(0, 0, 0, 0.35)',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          marginBottom: '20px',
-          border: '1px solid var(--border-subtle)'
-        }}>
-          <button
-            type="button"
-            onClick={() => handleTabSwitch('admin')}
-            style={{
-              padding: '10px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'admin' ? 'var(--sap-blue)' : 'transparent',
-              color: activeTab === 'admin' ? 'white' : 'var(--text-muted)'
-            }}
-          >
-            <Shield size={15} />
-            <span>Admin Portal</span>
-          </button>
+          <div className="login-features-list">
+            <div className="login-feature-item">
+              <span className="feature-check-icon">
+                <Check size={14} />
+              </span>
+              <span>Enterprise RAP Object <code>ZC_EMPLOYEE_DETAILS</code></span>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => handleTabSwitch('employee')}
-            style={{
-              padding: '10px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'employee' ? '#059669' : 'transparent',
-              color: activeTab === 'employee' ? 'white' : 'var(--text-muted)'
-            }}
-          >
-            <UserCheck size={15} />
-            <span>Employee Self-Service</span>
-          </button>
-        </div>
+            <div className="login-feature-item">
+              <span className="feature-check-icon">
+                <Check size={14} />
+              </span>
+              <span>Centralized real-time leave approval tracking</span>
+            </div>
 
-        {error && (
-          <div style={{
-            background: 'rgba(244, 63, 94, 0.1)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
-            borderRadius: 'var(--radius-md)',
-            padding: '10px 14px',
-            color: '#fb7185',
-            fontSize: '0.8rem',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <Lock size={15} />
-            <span>{error}</span>
+            <div className="login-feature-item">
+              <span className="feature-check-icon">
+                <Check size={14} />
+              </span>
+              <span>Role-based access & automated determinations</span>
+            </div>
           </div>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="login-userid" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {activeTab === 'admin' ? 'Admin User ID' : 'SAP Employee ID'}
-            </label>
-            <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
-              <input 
-                id="login-userid"
-                type="text" 
-                style={{ paddingLeft: '38px' }}
-                placeholder={activeTab === 'admin' ? 'Enter Admin User ID' : 'Enter Employee ID'}
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                required
-              />
+        {/* Right Side: Sign-In Form (Matches Screenshot 5) */}
+        <div className="login-form-panel">
+          <div className="login-form-header">
+            <h2 className="login-welcome-title">Welcome Back</h2>
+            <p className="login-welcome-subtitle">Sign in to access your account</p>
+          </div>
+
+          {/* Quick Demo Access Bar */}
+          <div className="login-demo-bar">
+            <span className="demo-label">Interview Quick Demo:</span>
+            <div className="demo-buttons-row">
+              <button
+                type="button"
+                className="btn-demo-pill"
+                onClick={() => handleQuickLogin('admin')}
+              >
+                <Shield size={12} />
+                <span>HR Admin</span>
+              </button>
+              <button
+                type="button"
+                className="btn-demo-pill"
+                onClick={() => handleQuickLogin('employee')}
+              >
+                <UserCheck size={12} />
+                <span>Employee</span>
+              </button>
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="login-password" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Key size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
-              <input 
-                id="login-password"
-                type="password" 
-                style={{ paddingLeft: '38px' }}
-                placeholder="Enter Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+          {error && (
+            <div className="login-error-alert">
+              <span>{error}</span>
             </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="form-group-clean">
+              <label htmlFor="login-username">Username</label>
+              <div className="input-with-icon-wrap">
+                <User size={16} className="input-icon" />
+                <input
+                  id="login-username"
+                  type="text"
+                  placeholder="Enter your username (e.g. ariz17 or 100101)"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="clean-input with-left-icon"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group-clean">
+              <label htmlFor="login-password">Password</label>
+              <div className="input-with-icon-wrap">
+                <Lock size={16} className="input-icon" />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="clean-input with-left-icon with-right-btn"
+                  required
+                />
+                <button
+                  type="button"
+                  className="input-right-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="btn-login-submit"
+            >
+              <span>Sign In</span>
+              <ArrowRight size={16} />
+            </button>
+          </form>
+
+          <div className="login-footer-meta">
+            <p>SAP Workforce Management System</p>
+            <span>Managed ABAP RESTful Application Programming</span>
           </div>
-
-          <button 
-            id="btn-login-submit"
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              fontSize: '0.95rem',
-              background: activeTab === 'admin' ? 'var(--sap-blue)' : '#059669',
-              borderColor: activeTab === 'admin' ? 'var(--sap-blue)' : '#059669'
-            }}
-          >
-            <span>Authenticate & Issue JWT ({activeTab === 'admin' ? 'Admin' : 'Employee'})</span>
-            <ArrowRight size={16} />
-          </button>
-        </form>
-
-        <div style={{ marginTop: '20px', fontSize: '0.72rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-          <ShieldCheck size={14} style={{ color: '#10b981' }} />
-          <span>Secured via RFC 7519 JSON Web Token (JWT) Bearer Auth</span>
         </div>
       </div>
     </div>

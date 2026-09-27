@@ -1,20 +1,40 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Search, Filter, Plus, TrendingUp, RefreshCw, Calendar, 
-  Trash2, Award, Building2, User, Eye, ArrowLeft
-} from 'lucide-react';
-import { INITIAL_EMPLOYEES, DEPARTMENTS } from './data/mockData';
-import { Header } from './components/Header';
-import { MetricsBar } from './components/MetricsBar';
+import React, { useState, useEffect } from 'react';
+import { INITIAL_EMPLOYEES } from './data/mockData';
+import { Sidebar } from './components/Sidebar';
+import { TopNavbar } from './components/TopNavbar';
+import { DashboardView } from './components/DashboardView';
+import { EmployeesView } from './components/EmployeesView';
+import { LeaveRequestsView } from './components/LeaveRequestsView';
+import { SelfServiceView } from './components/SelfServiceView';
+import { AnalyticsView } from './components/AnalyticsView';
+import { ArchitectureView } from './components/ArchitectureView';
+import { LoginScreen } from './components/LoginScreen';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { GiveRaiseModal } from './components/GiveRaiseModal';
 import { LeaveManagementModal } from './components/LeaveManagementModal';
-import { LoginScreen } from './components/LoginScreen';
-import { EmployeeDashboard } from './components/EmployeeDashboard';
-import { AdminLeaveDesk } from './components/AdminLeaveDesk';
 import { getStoredJwtToken, saveJwtToken, removeJwtToken, decodeJwtToken } from './utils/jwtAuth';
 
 export function App() {
+  // Theme state: 'light' | 'dark' (defaulting to light as shown in user's screenshots)
+  const [theme, setTheme] = useState(() => {
+    try {
+      const savedTheme = localStorage.getItem('sap_app_theme');
+      return savedTheme || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  // Apply theme to document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('sap_app_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   // Authentication session state based on JWT
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -31,22 +51,20 @@ export function App() {
     }
   });
 
-  // Admin section: 'workforce' | 'leaves' | 'preview_employee'
-  const [adminSection, setAdminSection] = useState('workforce');
-  const [previewEmpId, setPreviewEmpId] = useState('100101');
+  // Active section tab: 'dashboard' | 'employees' | 'leaves' | 'self_service' | 'analytics' | 'architecture'
+  const [currentTab, setCurrentTab] = useState('dashboard');
 
-  // Load persisted state or fallback to seed data
+  // Load persisted state or fallback to seed data with IT industry departments
   const [employees, setEmployees] = useState(() => {
     try {
-      // Clear legacy storage if old names detected in browser cache
-      const legacy = localStorage.getItem('sap_workforce_employees');
-      if (legacy && (legacy.includes('Sarah Jenkins') || legacy.includes('Marcus Vance') || legacy.includes('Elena Rostova') || legacy.includes('Devon Chen'))) {
-        localStorage.removeItem('sap_workforce_employees');
-        localStorage.setItem('sap_workforce_employees_v2', JSON.stringify(INITIAL_EMPLOYEES));
+      const legacyV2 = localStorage.getItem('sap_workforce_employees_v2');
+      if (legacyV2 && (legacyV2.includes('Engineering') || legacyV2.includes('Finance') || legacyV2.includes('Product'))) {
+        localStorage.removeItem('sap_workforce_employees_v2');
+        localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(INITIAL_EMPLOYEES));
         return INITIAL_EMPLOYEES;
       }
 
-      const saved = localStorage.getItem('sap_workforce_employees_v2');
+      const saved = localStorage.getItem('sap_workforce_employees_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -57,20 +75,18 @@ export function App() {
     }
   });
 
-  // Filters & Search for Admin table
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDept, setSelectedDept] = useState('ALL');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
-
   // Modals state
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedForRaise, setSelectedForRaise] = useState(null);
   const [selectedForLeaves, setSelectedForLeaves] = useState(null);
 
+  // Active employee for self-service preview
+  const [simulatedEmpId, setSimulatedEmpId] = useState('100101');
+
   // Sync to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('sap_workforce_employees_v2', JSON.stringify(employees));
+      localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(employees));
     } catch (e) {
       console.error("Storage error", e);
     }
@@ -80,7 +96,12 @@ export function App() {
   const handleLogin = ({ token, user }) => {
     saveJwtToken(token);
     setCurrentUser({ ...user, token });
-    setAdminSection('workforce');
+    if (user.role === 'employee') {
+      setCurrentTab('self_service');
+      setSimulatedEmpId(user.empid || '100101');
+    } else {
+      setCurrentTab('dashboard');
+    }
   };
 
   // Handle Logout
@@ -211,310 +232,97 @@ export function App() {
 
   // Reset to initial sample data
   const handleResetData = () => {
-    if (confirm("Reset to default SAP sample employees?")) {
+    if (confirm("Reset to default SAP sample employees with IT departments?")) {
       setEmployees(INITIAL_EMPLOYEES);
       localStorage.removeItem('sap_workforce_employees');
       localStorage.removeItem('sap_workforce_employees_v2');
+      localStorage.removeItem('sap_workforce_employees_v3');
     }
   };
 
-  // Filtered employees list for Admin
-  const filteredEmployees = useMemo(() => {
-    return employees.filter(emp => {
-      const matchesSearch = 
-        emp.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.Empid.includes(searchTerm) ||
-        emp.Email.toLowerCase().includes(searchTerm.toLowerCase());
+  // Pending leaves count for sidebar badge
+  const pendingLeavesCount = employees.reduce((acc, emp) => {
+    return acc + (emp.Leaves ? emp.Leaves.filter(l => l.Status === 'PENDING').length : 0);
+  }, 0);
 
-      const matchesDept = selectedDept === 'ALL' || emp.Dept === selectedDept;
-      const matchesStatus = selectedStatus === 'ALL' || emp.Status === selectedStatus;
+  // Active Employee Record for Self-Service
+  const activeEmpRecord = employees.find(e => e.Empid === (currentUser?.role === 'employee' ? currentUser.empid : simulatedEmpId)) || employees[0];
 
-      return matchesSearch && matchesDept && matchesStatus;
-    });
-  }, [employees, searchTerm, selectedDept, selectedStatus]);
-
-  // If not authenticated, render LoginScreen with JWT issuing
+  // If not logged in, render the clean split-card LoginScreen
   if (!currentUser) {
     return <LoginScreen onLogin={handleLogin} employees={employees} />;
   }
 
-  // Active Employee Record for Employee view
-  const activeEmpId = currentUser.role === 'employee' ? currentUser.empid : previewEmpId;
-  const currentEmployeeRecord = employees.find(e => e.Empid === activeEmpId) || employees[0];
-
   return (
-    <div className="app-container">
-      {/* Header with Role Badge, Token Inspection & Nav */}
-      <Header 
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onOpenAddEmployee={() => setIsAddOpen(true)}
-        adminSection={adminSection}
-        onAdminSectionChange={setAdminSection}
+    <div className="portal-app-layout">
+      {/* Left Sidebar (Matches Screenshot) */}
+      <Sidebar 
+        currentTab={currentTab} 
+        onSelectTab={setCurrentTab}
+        pendingLeavesCount={pendingLeavesCount}
+        onOpenHelp={() => setCurrentTab('architecture')}
       />
 
-      {/* =========================================================================
-          SECTION 1: EMPLOYEE DASHBOARD (Role: Employee OR Admin Preview)
-          ========================================================================= */}
-      {currentUser.role === 'employee' || adminSection === 'preview_employee' ? (
-        <div>
-          {currentUser.role === 'admin' && (
-            <div style={{
-              background: 'rgba(56, 189, 248, 0.1)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px 18px',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', color: '#38bdf8' }}>
-                <Eye size={16} />
-                <span><strong>Admin Perspective Mode:</strong> Previewing Employee Self-Service Dashboard</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <select 
-                  value={previewEmpId} 
-                  onChange={(e) => setPreviewEmpId(e.target.value)}
-                  className="select-dropdown"
-                  style={{ fontSize: '0.78rem', padding: '4px 8px' }}
-                >
-                  {employees.map(e => (
-                    <option key={e.Empid} value={e.Empid}>
-                      {e.Empid} - {e.Name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setAdminSection('workforce')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <ArrowLeft size={13} />
-                  <span>Return to Admin</span>
-                </button>
-              </div>
-            </div>
+      {/* Main Workspace Column */}
+      <div className="portal-main-area">
+        {/* Top Navbar with Dynamic Title, Light/Dark toggle, User Profile */}
+        <TopNavbar 
+          currentTab={currentTab}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+
+        {/* Tab Views */}
+        <main className="portal-page-body">
+          {currentTab === 'dashboard' && (
+            <DashboardView 
+              employees={employees} 
+              onNavigate={setCurrentTab}
+            />
           )}
 
-          <EmployeeDashboard 
-            currentEmployee={currentEmployeeRecord}
-            employees={employees}
-            onApplyLeave={handleAddLeave}
-          />
-        </div>
-      ) : (
-        /* =========================================================================
-           SECTION 2: ADMIN DASHBOARDS (Role: Admin)
-           ========================================================================= */
-        <div>
-          {/* Sub-section A: Centralized Leave Approvals & Rejections Desk */}
-          {adminSection === 'leaves' && (
-            <AdminLeaveDesk 
+          {currentTab === 'employees' && (
+            <EmployeesView 
+              employees={employees}
+              onOpenAddModal={() => setIsAddOpen(true)}
+              onOpenRaiseModal={setSelectedForRaise}
+              onOpenLeavesModal={setSelectedForLeaves}
+              onToggleStatus={handleToggleStatus}
+              onDeleteEmployee={handleDeleteEmployee}
+              onResetData={handleResetData}
+            />
+          )}
+
+          {currentTab === 'leaves' && (
+            <LeaveRequestsView 
               employees={employees}
               onApproveLeave={handleApproveLeave}
               onRejectLeave={handleRejectLeave}
             />
           )}
 
-          {/* Sub-section B: Workforce Master Data Records */}
-          {adminSection === 'workforce' && (
-            <div>
-              {/* KPI Stats Bar */}
-              <MetricsBar employees={employees} />
-
-              {/* Filter and Action Toolbar */}
-              <div className="control-toolbar">
-                <div className="filter-group">
-                  <div className="search-box">
-                    <Search size={16} className="search-icon" />
-                    <input 
-                      id="search-input"
-                      type="text" 
-                      placeholder="Search by name, ID, email..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-
-                  <select 
-                    id="dept-filter"
-                    className="select-dropdown"
-                    value={selectedDept}
-                    onChange={(e) => setSelectedDept(e.target.value)}
-                  >
-                    <option value="ALL">All Departments</option>
-                    {DEPARTMENTS.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-
-                  <select 
-                    id="status-filter"
-                    className="select-dropdown"
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="ON_LEAVE">On Leave</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setAdminSection('preview_employee')}
-                    title="Preview Employee Self-Service Dashboard"
-                  >
-                    <Eye size={14} />
-                    <span>Employee View</span>
-                  </button>
-
-                  <button 
-                    id="btn-reset-data"
-                    className="btn btn-secondary btn-sm" 
-                    onClick={handleResetData}
-                    title="Reset to default seed records"
-                  >
-                    <RefreshCw size={14} />
-                    <span>Reset Demo Data</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Employee Master Table (ZC_EMPLOYEE_DETAILS) */}
-              <div className="table-card">
-                <div className="table-header-title">
-                  <h2>
-                    <Building2 size={18} style={{ color: 'var(--sap-blue-light)' }} />
-                    <span>Workforce Records (<code>ZC_EMPLOYEE_DETAILS</code>)</span>
-                  </h2>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Showing {filteredEmployees.length} of {employees.length} records
-                  </span>
-                </div>
-
-                <div className="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Employee Name</th>
-                        <th>Department</th>
-                        <th>Base Salary</th>
-                        <th>Join Date</th>
-                        <th>Status</th>
-                        <th>Leave History</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEmployees.length === 0 ? (
-                        <tr>
-                          <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                            No employee records match the filter criteria.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredEmployees.map((emp) => (
-                          <tr key={emp.Empid}>
-                            <td>
-                              <span className="empid-tag">{emp.Empid}</span>
-                            </td>
-                            <td>
-                              <div style={{ fontWeight: 600, color: '#f8fafc' }}>{emp.Name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.Email}</div>
-                            </td>
-                            <td>
-                              <span className="badge badge-dept">{emp.Dept}</span>
-                            </td>
-                            <td>
-                              <span className="salary-tag">₹{(parseFloat(emp.Salary) || 0).toLocaleString('en-IN')}</span>
-                            </td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                              {emp.Joindate}
-                            </td>
-                            <td>
-                              <span className={`badge ${
-                                emp.Status === 'ACTIVE' ? 'badge-active' :
-                                emp.Status === 'ON_LEAVE' ? 'badge-leave' : 'badge-inactive'
-                              }`}>
-                                {emp.Status}
-                              </span>
-                            </td>
-                            <td>
-                              <button 
-                                className="btn btn-sm btn-secondary"
-                                onClick={() => setSelectedForLeaves(emp)}
-                                title="Manage employee leaves (Approve / Reject)"
-                              >
-                                <Calendar size={13} style={{ color: '#8b5cf6' }} />
-                                <span>
-                                  {emp.Leaves ? emp.Leaves.length : 0} Leaves
-                                  {emp.Leaves && emp.Leaves.some(l => l.Status === 'PENDING') && (
-                                    <span style={{ 
-                                      marginLeft: '4px', 
-                                      background: '#f59e0b', 
-                                      color: 'black', 
-                                      borderRadius: '50%', 
-                                      padding: '1px 5px', 
-                                      fontSize: '0.68rem', 
-                                      fontWeight: 700 
-                                    }}>!</span>
-                                  )}
-                                </span>
-                              </button>
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'inline-flex', gap: '6px' }}>
-                                {/* Custom Action giveRaise */}
-                                <button 
-                                  className="btn btn-sm btn-primary"
-                                  onClick={() => setSelectedForRaise(emp)}
-                                  title="Execute RAP Action giveRaise"
-                                >
-                                  <TrendingUp size={13} />
-                                  <span>Raise</span>
-                                </button>
-
-                                {/* Custom Action changeStatus */}
-                                <button 
-                                  className="btn btn-sm btn-secondary"
-                                  onClick={() => handleToggleStatus(emp.Empid)}
-                                  title="Cycle Status (ACTIVE -> ON_LEAVE -> INACTIVE)"
-                                >
-                                  <span>Toggle Status</span>
-                                </button>
-
-                                {/* Delete */}
-                                <button 
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => handleDeleteEmployee(emp.Empid)}
-                                  title="Delete Employee Record"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+          {currentTab === 'self_service' && (
+            <SelfServiceView 
+              currentEmployee={activeEmpRecord}
+              employees={employees}
+              onApplyLeave={handleAddLeave}
+              onSwitchEmployee={setSimulatedEmpId}
+            />
           )}
-        </div>
-      )}
 
-      {/* Admin Modals */}
+          {currentTab === 'analytics' && (
+            <AnalyticsView employees={employees} />
+          )}
+
+          {currentTab === 'architecture' && (
+            <ArchitectureView />
+          )}
+        </main>
+      </div>
+
+      {/* Modals */}
       <AddEmployeeModal 
         isOpen={isAddOpen} 
         onClose={() => setIsAddOpen(false)} 
@@ -531,7 +339,7 @@ export function App() {
       <LeaveManagementModal 
         isOpen={!!selectedForLeaves}
         employee={selectedForLeaves}
-        onClose={() => setSelectedForLeaves(null)}
+        onClose={() => setSelectedForLeaves(null)} 
         onApproveLeave={handleApproveLeave}
         onRejectLeave={handleRejectLeave}
         onAddLeave={handleAddLeave}

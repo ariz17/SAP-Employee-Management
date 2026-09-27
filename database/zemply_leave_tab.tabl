@@ -14,5 +14,4 @@ define table zemply_leave_tab {
   days_count     : abap.int4;
   reason         : abap.char(100);
   status         : abap.char(15);
-
 }

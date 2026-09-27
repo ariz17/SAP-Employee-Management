@@ -6,8 +6,8 @@ export const INITIAL_EMPLOYEES = [
   {
     Empid: "100101",
     Name: "Arbab Rizvi",
-    Email: "arbab.rizvi@enterprise.sap",
-    Dept: "Engineering",
+    Email: "arbab.rizvi@enterprise.com",
+    Dept: "IT Consulting",
     Salary: 1250000.00,
     Joindate: "2023-01-15",
     Status: "ACTIVE",
@@ -27,8 +27,8 @@ export const INITIAL_EMPLOYEES = [
   {
     Empid: "100102",
     Name: "Mridul Tripathi",
-    Email: "mridul.tripathi@enterprise.sap",
-    Dept: "Finance",
+    Email: "mridul.tripathi@enterprise.com",
+    Dept: "Cloud & Infrastructure",
     Salary: 980000.00,
     Joindate: "2022-06-10",
     Status: "ACTIVE",
@@ -48,8 +48,8 @@ export const INITIAL_EMPLOYEES = [
   {
     Empid: "100103",
     Name: "Harshit Sharma",
-    Email: "harshit.sharma@enterprise.sap",
-    Dept: "Product",
+    Email: "harshit.sharma@enterprise.com",
+    Dept: "Software Engineering",
     Salary: 1400000.00,
     Joindate: "2021-11-01",
     Status: "ON_LEAVE",
@@ -57,7 +57,7 @@ export const INITIAL_EMPLOYEES = [
       {
         LeaveId: "80010003",
         Empid: "100103",
-        LeaveType: "Parental",
+        LeaveType: "Parental Leave",
         StartDate: "2026-09-15",
         EndDate: "2026-10-15",
         DaysCount: 30,
@@ -69,9 +69,9 @@ export const INITIAL_EMPLOYEES = [
   {
     Empid: "100104",
     Name: "Mohd Faiz",
-    Email: "mohd.faiz@enterprise.sap",
-    Dept: "Human Resources",
-    Salary: 750000.00,
+    Email: "mohd.faiz@enterprise.com",
+    Dept: "Cybersecurity",
+    Salary: 850000.00,
     Joindate: "2023-08-20",
     Status: "ACTIVE",
     Leaves: []
@@ -79,8 +79,8 @@ export const INITIAL_EMPLOYEES = [
   {
     Empid: "100105",
     Name: "Kshitiz Goel",
-    Email: "kshitiz.goel@enterprise.sap",
-    Dept: "Engineering",
+    Email: "kshitiz.goel@enterprise.com",
+    Dept: "Data & AI Analytics",
     Salary: 1600000.00,
     Joindate: "2020-04-12",
     Status: "ACTIVE",
@@ -100,9 +100,10 @@ export const INITIAL_EMPLOYEES = [
 ];
 
 export const DEPARTMENTS = [
-  "Engineering",
-  "Product",
-  "Finance",
-  "Human Resources",
-  "Sales & Marketing"
+  "IT Consulting",
+  "Cloud & Infrastructure",
+  "Software Engineering",
+  "Cybersecurity",
+  "Data & AI Analytics",
+  "Quality Assurance & Testing"
 ];

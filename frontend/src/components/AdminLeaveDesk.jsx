@@ -107,10 +107,10 @@ export function AdminLeaveDesk({
           <div>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Calendar size={18} style={{ color: 'var(--sap-blue-light)' }} />
-              <span>Centralized Leave Approvals & Rejections (RAP Composition)</span>
+              <span>Leave Approvals Desk (<code>ZC_EMPLOYEE_LEAVE</code>)</span>
             </h2>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Admin authorization desk to accept or reject employee leave requests
+              Review and approve or reject employee leave requests in real time
             </p>
           </div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
