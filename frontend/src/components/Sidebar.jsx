@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, Users, CalendarCheck, UserCheck, 
-  BarChart3, Layers, HelpCircle, Database
+  BarChart3, HelpCircle, Database
 } from 'lucide-react';
 
 export function Sidebar({ 
@@ -49,13 +49,6 @@ export function Sidebar({
       badge: null,
       adminOnly: true
     },
-    {
-      id: 'architecture',
-      label: 'Architecture',
-      icon: Layers,
-      badge: 'RAP',
-      adminOnly: false
-    }
   ];
 
   const menuItems = allMenuItems.filter(item => isEmployee ? !item.adminOnly : true);

@@ -74,13 +74,14 @@ export function SelfServiceView({
     <div className="view-content-wrapper">
       {/* Switcher & Profile Card */}
       <div className="table-container-card" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div className="avatar-large">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'nowrap' }}>
+          {/* Left: Avatar + Name + Meta */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, flex: '1 1 0' }}>
+            <div className="avatar-large" style={{ flexShrink: 0 }}>
               {emp.Name.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{emp.Name}</h2>
                 <span className="id-badge">ID: {emp.Empid}</span>
                 <span className={`status-badge ${emp.Status === 'ACTIVE' ? 'status-approved' : 'status-pending'}`}>
@@ -101,10 +102,11 @@ export function SelfServiceView({
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Right: Simulate dropdown + CTC — always stays on right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
             {onSwitchEmployee && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Simulate Employee:</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Simulate Employee:</span>
                 <select 
                   value={emp.Empid} 
                   onChange={(e) => onSwitchEmployee(e.target.value)}
