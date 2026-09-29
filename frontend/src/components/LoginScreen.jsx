@@ -7,6 +7,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -17,17 +18,23 @@ export function LoginScreen({ onLogin, employees = [] }) {
       return;
     }
 
-    const auth = authenticateCredentials({
-      userId: userId.trim(),
-      password: password.trim(),
-      employees
-    });
+    setIsSubmitting(true);
 
-    if (auth.success) {
-      onLogin({ token: auth.token, user: auth.user });
-    } else {
-      setError(auth.error || 'Invalid username or password.');
-    }
+    // Realistic SAP Gateway Auth Handshake (~650ms)
+    setTimeout(() => {
+      const auth = authenticateCredentials({
+        userId: userId.trim(),
+        password: password.trim(),
+        employees
+      });
+
+      if (auth.success) {
+        onLogin({ token: auth.token, user: auth.user });
+      } else {
+        setIsSubmitting(false);
+        setError(auth.error || 'Invalid username or password.');
+      }
+    }, 650);
   };
 
   return (
@@ -127,8 +134,10 @@ export function LoginScreen({ onLogin, employees = [] }) {
             <button
               type="submit"
               className="btn-login-submit"
+              disabled={isSubmitting}
+              style={{ opacity: isSubmitting ? 0.8 : 1, cursor: isSubmitting ? 'wait' : 'pointer' }}
             >
-              <span>Sign In</span>
+              <span>{isSubmitting ? 'Authenticating with SAP Gateway...' : 'Sign In'}</span>
               <ArrowRight size={16} />
             </button>
           </form>

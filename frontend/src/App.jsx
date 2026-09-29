@@ -12,9 +12,13 @@ import { LoginScreen } from './components/LoginScreen';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { GiveRaiseModal } from './components/GiveRaiseModal';
 import { LeaveManagementModal } from './components/LeaveManagementModal';
+import { SapSplashLoader } from './components/SapSplashLoader';
 import { getStoredJwtToken, saveJwtToken, removeJwtToken, decodeJwtToken } from './utils/jwtAuth';
 
 export function App() {
+  // Initial SAP NetWeaver Gateway connection splash loader (lasts ~2 seconds for realism)
+  const [isAppLoading, setIsAppLoading] = useState(true);
+
   // Theme state: 'light' | 'dark' (defaulting to light as shown in user's screenshots)
   const [theme, setTheme] = useState(() => {
     try {
@@ -515,11 +519,22 @@ export function App() {
 
   // If not logged in, render the clean split-card LoginScreen
   if (!currentUser) {
-    return <LoginScreen onLogin={handleLogin} employees={employees} />;
+    return (
+      <>
+        {isAppLoading && (
+          <SapSplashLoader onComplete={() => setIsAppLoading(false)} duration={2100} />
+        )}
+        <LoginScreen onLogin={handleLogin} employees={employees} />
+      </>
+    );
   }
 
   return (
-    <div className="portal-app-layout">
+    <>
+      {isAppLoading && (
+        <SapSplashLoader onComplete={() => setIsAppLoading(false)} duration={2100} />
+      )}
+      <div className="portal-app-layout">
       {/* Left Sidebar (Role-based) */}
       <Sidebar
         currentTab={currentTab}
@@ -611,5 +626,6 @@ export function App() {
         onAddLeave={handleAddLeave}
       />
     </div>
+    </>
   );
 }
