@@ -94,24 +94,143 @@ export function App() {
 
   const backendBase = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? '' : 'https://sap-employee-backend.onrender.com');
 
+  // Helper: Merge remote employee data with existing local state/localStorage
+  // Ensures leave requests and approval/rejection statuses are NEVER wiped out on reload
+  const mergeEmployeesWithLocal = (remoteList, currentList) => {
+    if (!Array.isArray(remoteList) || remoteList.length === 0) return currentList;
+    if (!Array.isArray(currentList) || currentList.length === 0) return remoteList;
+
+    const currentMap = new Map(currentList.map(e => [e.Empid, e]));
+
+    const merged = remoteList.map(remoteEmp => {
+      const localEmp = currentMap.get(remoteEmp.Empid);
+      if (!localEmp) return remoteEmp;
+
+      const localLeaves = Array.isArray(localEmp.Leaves) ? localEmp.Leaves : [];
+      const remoteLeaves = Array.isArray(remoteEmp.Leaves) ? remoteEmp.Leaves : [];
+
+      const leaveMap = new Map();
+
+      // Start with remote leaves
+      remoteLeaves.forEach(l => {
+        if (l && l.LeaveId) leaveMap.set(l.LeaveId, l);
+      });
+
+      // Overlay local leaves (preserve locally submitted requests and approved/rejected decisions)
+      localLeaves.forEach(localL => {
+        if (!localL || !localL.LeaveId) return;
+        const remoteL = leaveMap.get(localL.LeaveId);
+        if (!remoteL) {
+          // Leave exists locally but remote doesn't have it yet -> retain it
+          leaveMap.set(localL.LeaveId, localL);
+        } else {
+          // If either local or remote has a processed status (APPROVED/REJECTED), preserve that status
+          if (localL.Status === 'APPROVED' || localL.Status === 'REJECTED') {
+            leaveMap.set(localL.LeaveId, { ...remoteL, ...localL, Status: localL.Status });
+          } else if (remoteL.Status === 'APPROVED' || remoteL.Status === 'REJECTED') {
+            leaveMap.set(localL.LeaveId, remoteL);
+          } else {
+            leaveMap.set(localL.LeaveId, { ...remoteL, ...localL });
+          }
+        }
+      });
+
+      return {
+        ...remoteEmp,
+        ...localEmp, // keep any local raises or status toggles
+        Leaves: Array.from(leaveMap.values())
+      };
+    });
+
+    // Also preserve any locally created employees not in remote list
+    const remoteIds = new Set(remoteList.map(e => e.Empid));
+    currentList.forEach(localEmp => {
+      if (!remoteIds.has(localEmp.Empid)) {
+        merged.push(localEmp);
+      }
+    });
+
+    return merged;
+  };
+
+  // Background helper to sync leave status to backend (trying primary backend and fallback)
+  const syncLeaveStatusToBackend = async (empid, leaveId, status) => {
+    const urls = [];
+    if (backendBase) urls.push(`${backendBase}/api/employees/${empid}/leave/${leaveId}`);
+    urls.push(`/api/employees/${empid}/leave/${leaveId}`);
+    urls.push(`https://sap-employee-backend.onrender.com/api/employees/${empid}/leave/${leaveId}`);
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        if (res.ok) return;
+      } catch {}
+    }
+  };
+
+  // Background helper to sync newly created leave to backend
+  const syncNewLeaveToBackend = async (empid, newLeave) => {
+    const urls = [];
+    if (backendBase) urls.push(`${backendBase}/api/employees/${empid}/leave`);
+    urls.push(`/api/employees/${empid}/leave`);
+    urls.push(`https://sap-employee-backend.onrender.com/api/employees/${empid}/leave`);
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newLeave)
+        });
+        if (res.ok) return;
+      } catch {}
+    }
+  };
+
   // -----------------------------------------------------------------------
   // Fetch persisted data from Node.js BFF / API Gateway & SAP Gateway
   // -----------------------------------------------------------------------
   useEffect(() => {
     async function loadEmployees() {
+      // 1. Fetch from configured Node.js BFF / API Gateway
       try {
-        // 1. Fetch from Node.js BFF / API Gateway (Render or localhost)
         const response = await fetch(`${backendBase}/api/employees`);
         if (response.ok) {
           const resData = await response.json();
           if (resData.success && Array.isArray(resData.data) && resData.data.length > 0) {
-            setEmployees(resData.data);
+            setEmployees(prev => {
+              const merged = mergeEmployeesWithLocal(resData.data, prev);
+              try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
+              return merged;
+            });
             console.log(`✅ Loaded ${resData.data.length} employees (Source: ${resData.source})!`);
             return;
           }
         }
       } catch (backendErr) {
-        console.warn('Backend API not reachable, attempting direct SAP Gateway fallback...', backendErr.message);
+        console.warn('Backend API not reachable, attempting secondary sources...', backendErr.message);
+      }
+
+      // 1b. Try live public backend if in dev mode
+      if (backendBase !== 'https://sap-employee-backend.onrender.com') {
+        try {
+          const altRes = await fetch('https://sap-employee-backend.onrender.com/api/employees');
+          if (altRes.ok) {
+            const altData = await altRes.json();
+            if (altData.success && Array.isArray(altData.data) && altData.data.length > 0) {
+              setEmployees(prev => {
+                const merged = mergeEmployeesWithLocal(altData.data, prev);
+                try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
+                return merged;
+              });
+              return;
+            }
+          }
+        } catch {}
       }
 
       // 2. Direct SAP Gateway call (if Vite proxy is running locally)
@@ -144,7 +263,11 @@ export function App() {
             Joindate: emp.Joindate || emp.JOINDATE || '2022-01-01',
             Leaves: []
           }));
-          setEmployees(sapEmployees);
+          setEmployees(prev => {
+            const merged = mergeEmployeesWithLocal(sapEmployees, prev);
+            try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
+            return merged;
+          });
           console.log(`✅ Loaded ${sapEmployees.length} employees directly from SAP Gateway!`);
         }
       } catch (err) {
@@ -261,68 +384,70 @@ export function App() {
 
   // Handler: RAP Action approveLeave (Accept)
   const handleApproveLeave = async (empid, leaveId) => {
-    setEmployees(prev => prev.map(emp => {
-      if (emp.Empid === empid) {
-        const updatedLeaves = (emp.Leaves || []).map(leave => {
-          if (leave.LeaveId === leaveId) {
-            return { ...leave, Status: 'APPROVED' };
-          }
-          return leave;
-        });
-        return { ...emp, Leaves: updatedLeaves };
+    setEmployees(prev => {
+      const updated = prev.map(emp => {
+        if (emp.Empid === empid) {
+          const updatedLeaves = (emp.Leaves || []).map(leave => {
+            if (leave.LeaveId === leaveId) {
+              return { ...leave, Status: 'APPROVED' };
+            }
+            return leave;
+          });
+          return { ...emp, Leaves: updatedLeaves };
+        }
+        return emp;
+      });
+      try {
+        localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(updated));
+      } catch (e) {
+        console.error("Storage error", e);
       }
-      return emp;
-    }));
+      return updated;
+    });
 
     if (selectedForLeaves && selectedForLeaves.Empid === empid) {
       setSelectedForLeaves(prev => ({
         ...prev,
-        Leaves: prev.Leaves.map(l => l.LeaveId === leaveId ? { ...l, Status: 'APPROVED' } : l)
+        Leaves: (prev.Leaves || []).map(l => l.LeaveId === leaveId ? { ...l, Status: 'APPROVED' } : l)
       }));
     }
 
-    try {
-      await fetch(`${backendBase}/api/employees/${empid}/leave/${leaveId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'APPROVED' })
-      });
-    } catch (err) {
-      console.warn('Backend sync failed, saved locally:', err.message);
-    }
+    // Background sync to backend
+    syncLeaveStatusToBackend(empid, leaveId, 'APPROVED');
   };
 
   // Handler: RAP Action rejectLeave (Reject)
   const handleRejectLeave = async (empid, leaveId) => {
-    setEmployees(prev => prev.map(emp => {
-      if (emp.Empid === empid) {
-        const updatedLeaves = (emp.Leaves || []).map(leave => {
-          if (leave.LeaveId === leaveId) {
-            return { ...leave, Status: 'REJECTED' };
-          }
-          return leave;
-        });
-        return { ...emp, Leaves: updatedLeaves };
+    setEmployees(prev => {
+      const updated = prev.map(emp => {
+        if (emp.Empid === empid) {
+          const updatedLeaves = (emp.Leaves || []).map(leave => {
+            if (leave.LeaveId === leaveId) {
+              return { ...leave, Status: 'REJECTED' };
+            }
+            return leave;
+          });
+          return { ...emp, Leaves: updatedLeaves };
+        }
+        return emp;
+      });
+      try {
+        localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(updated));
+      } catch (e) {
+        console.error("Storage error", e);
       }
-      return emp;
-    }));
+      return updated;
+    });
 
     if (selectedForLeaves && selectedForLeaves.Empid === empid) {
       setSelectedForLeaves(prev => ({
         ...prev,
-        Leaves: prev.Leaves.map(l => l.LeaveId === leaveId ? { ...l, Status: 'REJECTED' } : l)
+        Leaves: (prev.Leaves || []).map(l => l.LeaveId === leaveId ? { ...l, Status: 'REJECTED' } : l)
       }));
     }
 
-    try {
-      await fetch(`${backendBase}/api/employees/${empid}/leave/${leaveId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'REJECTED' })
-      });
-    } catch (err) {
-      console.warn('Backend sync failed, saved locally:', err.message);
-    }
+    // Background sync to backend
+    syncLeaveStatusToBackend(empid, leaveId, 'REJECTED');
   };
 
   // Handler: Add Leave Request (Composition child create)
@@ -331,18 +456,27 @@ export function App() {
     const newLeave = {
       LeaveId: newLeaveId,
       Empid: empid,
+      Status: 'PENDING',
       ...leaveData
     };
 
-    setEmployees(prev => prev.map(emp => {
-      if (emp.Empid === empid) {
-        return {
-          ...emp,
-          Leaves: [newLeave, ...(emp.Leaves || [])]
-        };
+    setEmployees(prev => {
+      const updated = prev.map(emp => {
+        if (emp.Empid === empid) {
+          return {
+            ...emp,
+            Leaves: [newLeave, ...(emp.Leaves || [])]
+          };
+        }
+        return emp;
+      });
+      try {
+        localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(updated));
+      } catch (e) {
+        console.error("Storage error", e);
       }
-      return emp;
-    }));
+      return updated;
+    });
 
     if (selectedForLeaves && selectedForLeaves.Empid === empid) {
       setSelectedForLeaves(prev => ({
@@ -351,15 +485,8 @@ export function App() {
       }));
     }
 
-    try {
-      await fetch(`${backendBase}/api/employees/${empid}/leave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newLeave)
-      });
-    } catch (err) {
-      console.warn('Backend sync failed, saved locally:', err.message);
-    }
+    // Background sync to backend
+    syncNewLeaveToBackend(empid, newLeave);
   };
 
   // Reset to initial sample data

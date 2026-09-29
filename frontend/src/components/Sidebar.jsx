@@ -37,10 +37,11 @@ export function Sidebar({
     },
     {
       id: 'self_service',
-      label: isEmployee ? 'My Self-Service' : 'Self-Service (ESS)',
+      label: 'My Self-Service',
       icon: UserCheck,
       badge: null,
-      adminOnly: false
+      adminOnly: false,
+      employeeOnly: true
     },
     {
       id: 'analytics',
@@ -51,7 +52,10 @@ export function Sidebar({
     },
   ];
 
-  const menuItems = allMenuItems.filter(item => isEmployee ? !item.adminOnly : true);
+  const menuItems = allMenuItems.filter(item => {
+    if (isEmployee) return !item.adminOnly;
+    return !item.employeeOnly;
+  });
 
   return (
     <aside className="app-sidebar">

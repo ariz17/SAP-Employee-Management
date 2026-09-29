@@ -8,6 +8,17 @@ export function LeaveRequestsView({
 }) {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [recentlyProcessed, setRecentlyProcessed] = useState({});
+
+  const handleApprove = (empid, leaveId) => {
+    setRecentlyProcessed(prev => ({ ...prev, [leaveId]: 'APPROVED' }));
+    onApproveLeave(empid, leaveId);
+  };
+
+  const handleReject = (empid, leaveId) => {
+    setRecentlyProcessed(prev => ({ ...prev, [leaveId]: 'REJECTED' }));
+    onRejectLeave(empid, leaveId);
+  };
 
   // Collect all leaves
   const allLeaves = useMemo(() => {
@@ -23,16 +34,23 @@ export function LeaveRequestsView({
       });
     });
 
+    // Stable sort: newest requests first by LeaveId or StartDate
+    // Prevents approved/rejected items from jumping around when their status changes
     return list.sort((a, b) => {
-      if (a.Status === 'PENDING' && b.Status !== 'PENDING') return -1;
-      if (a.Status !== 'PENDING' && b.Status === 'PENDING') return 1;
+      const cmp = String(b.LeaveId || '').localeCompare(String(a.LeaveId || ''));
+      if (cmp !== 0) return cmp;
       return new Date(b.StartDate) - new Date(a.StartDate);
     });
   }, [employees]);
 
   const filteredLeaves = useMemo(() => {
     return allLeaves.filter(item => {
-      const matchesStatus = statusFilter === 'ALL' || item.Status === statusFilter;
+      const isJustProcessed = Boolean(recentlyProcessed[item.LeaveId]);
+      // If user is currently on PENDING tab and just approved/rejected an item, KEEP IT VISIBLE
+      const matchesStatus = statusFilter === 'ALL' 
+        || item.Status === statusFilter 
+        || (statusFilter === 'PENDING' && isJustProcessed);
+
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch = !q ||
         item.empName.toLowerCase().includes(q) ||
@@ -43,7 +61,7 @@ export function LeaveRequestsView({
 
       return matchesStatus && matchesSearch;
     });
-  }, [allLeaves, statusFilter, searchTerm]);
+  }, [allLeaves, statusFilter, searchTerm, recentlyProcessed]);
 
   const pendingCount = allLeaves.filter(l => l.Status === 'PENDING').length;
   const approvedCount = allLeaves.filter(l => l.Status === 'APPROVED').length;
@@ -174,7 +192,7 @@ export function LeaveRequestsView({
                           <button
                             type="button"
                             className="btn-action-accept"
-                            onClick={() => onApproveLeave(l.Empid, l.LeaveId)}
+                            onClick={() => handleApprove(l.Empid, l.LeaveId)}
                             title="Approve this leave request"
                           >
                             <Check size={13} />
@@ -183,7 +201,7 @@ export function LeaveRequestsView({
                           <button
                             type="button"
                             className="btn-action-reject"
-                            onClick={() => onRejectLeave(l.Empid, l.LeaveId)}
+                            onClick={() => handleReject(l.Empid, l.LeaveId)}
                             title="Reject this leave request"
                           >
                             <X size={13} />
@@ -191,7 +209,17 @@ export function LeaveRequestsView({
                           </button>
                         </div>
                       ) : (
-                        <span className="text-muted-sm">Processed</span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                          {l.Status === 'APPROVED' ? (
+                            <span className="status-badge status-approved" style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
+                              <CheckCircle2 size={12} style={{ marginRight: '4px' }} /> Approved
+                            </span>
+                          ) : (
+                            <span className="status-badge status-rejected" style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
+                              <XCircle size={12} style={{ marginRight: '4px' }} /> Rejected
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
