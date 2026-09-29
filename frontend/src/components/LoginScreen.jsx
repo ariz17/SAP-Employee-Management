@@ -92,7 +92,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
                 <input
                   id="login-username"
                   type="text"
-                  placeholder="HR: ariz17 | Employee: parag12"
+                  placeholder="Enter username"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
                   className="clean-input with-left-icon"
@@ -108,7 +108,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
                 <input
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="HR: arbab786 | Employee: parag@12"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="clean-input with-left-icon with-right-btn"
