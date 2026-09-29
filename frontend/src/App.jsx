@@ -92,6 +92,70 @@ export function App() {
     }
   }, [employees]);
 
+  // -----------------------------------------------------------------------
+  // Fetch LIVE data from SAP Gateway OData Service (ZEMPLOYEE_SRV_SRV)
+  // Replace YOUR_SAP_USER and YOUR_SAP_PASSWORD with your SAP login credentials
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    async function loadEmployees() {
+      const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+      try {
+        // 1. Try calling the Node.js BFF / API Gateway (Render or localhost)
+        const response = await fetch(`${backendBase}/api/employees`);
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success && Array.isArray(resData.data) && resData.data.length > 0) {
+            setEmployees(resData.data);
+            console.log(`✅ Loaded ${resData.data.length} employees (Source: ${resData.source})!`);
+            return;
+          }
+        }
+      } catch (backendErr) {
+        console.warn('Backend API not reachable, attempting direct SAP Gateway fallback...', backendErr.message);
+      }
+
+      // 2. Direct SAP Gateway call (if Vite proxy is running locally)
+      try {
+        const SAP_USER = 'GLBI-100';
+        const SAP_PASSWORD = 'Bt@123';
+        const response = await fetch(
+          '/sap/opu/odata/sap/ZEMPLOYEE_SRV_SRV/ZEMPLY_MNG_DBTABSet?$format=json',
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Basic ' + btoa(`${SAP_USER}:${SAP_PASSWORD}`)
+            }
+          }
+        );
+
+        if (!response.ok) throw new Error(`SAP returned HTTP ${response.status}`);
+
+        const data = await response.json();
+        const results = data?.d?.results;
+
+        if (Array.isArray(results) && results.length > 0) {
+          const sapEmployees = results.map((emp, idx) => ({
+            Empid: emp.EMPID || String(100101 + idx),
+            Name: emp.NAME || `Employee ${idx + 1}`,
+            Email: emp.EMAIL || `employee${idx + 1}@acme.com`,
+            Dept: emp.DEPT || 'General',
+            Salary: parseFloat(emp.SALARY) || 0,
+            Status: emp.STATUS || 'ACTIVE',
+            Joindate: '2022-01-01',
+            Leaves: []
+          }));
+          setEmployees(sapEmployees);
+          console.log(`✅ Loaded ${sapEmployees.length} employees directly from SAP Gateway!`);
+        }
+      } catch (err) {
+        console.warn('⚠️ SAP Gateway not reachable, using mock data:', err.message);
+      }
+    }
+
+    loadEmployees();
+  }, []); // runs once when the app opens
+
+
   // Handle Login via JWT
   const handleLogin = ({ token, user }) => {
     saveJwtToken(token);
@@ -256,8 +320,8 @@ export function App() {
   return (
     <div className="portal-app-layout">
       {/* Left Sidebar (Matches Screenshot) */}
-      <Sidebar 
-        currentTab={currentTab} 
+      <Sidebar
+        currentTab={currentTab}
         onSelectTab={setCurrentTab}
         pendingLeavesCount={pendingLeavesCount}
         onOpenHelp={() => setCurrentTab('architecture')}
@@ -266,7 +330,7 @@ export function App() {
       {/* Main Workspace Column */}
       <div className="portal-main-area">
         {/* Top Navbar with Dynamic Title, Light/Dark toggle, User Profile */}
-        <TopNavbar 
+        <TopNavbar
           currentTab={currentTab}
           currentUser={currentUser}
           onLogout={handleLogout}
@@ -277,14 +341,14 @@ export function App() {
         {/* Tab Views */}
         <main className="portal-page-body">
           {currentTab === 'dashboard' && (
-            <DashboardView 
-              employees={employees} 
+            <DashboardView
+              employees={employees}
               onNavigate={setCurrentTab}
             />
           )}
 
           {currentTab === 'employees' && (
-            <EmployeesView 
+            <EmployeesView
               employees={employees}
               onOpenAddModal={() => setIsAddOpen(true)}
               onOpenRaiseModal={setSelectedForRaise}
@@ -296,7 +360,7 @@ export function App() {
           )}
 
           {currentTab === 'leaves' && (
-            <LeaveRequestsView 
+            <LeaveRequestsView
               employees={employees}
               onApproveLeave={handleApproveLeave}
               onRejectLeave={handleRejectLeave}
@@ -304,7 +368,7 @@ export function App() {
           )}
 
           {currentTab === 'self_service' && (
-            <SelfServiceView 
+            <SelfServiceView
               currentEmployee={activeEmpRecord}
               employees={employees}
               onApplyLeave={handleAddLeave}
@@ -323,23 +387,23 @@ export function App() {
       </div>
 
       {/* Modals */}
-      <AddEmployeeModal 
-        isOpen={isAddOpen} 
-        onClose={() => setIsAddOpen(false)} 
-        onAddEmployee={handleAddEmployee} 
+      <AddEmployeeModal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onAddEmployee={handleAddEmployee}
       />
 
-      <GiveRaiseModal 
-        isOpen={!!selectedForRaise} 
+      <GiveRaiseModal
+        isOpen={!!selectedForRaise}
         employee={selectedForRaise}
-        onClose={() => setSelectedForRaise(null)} 
-        onApplyRaise={handleApplyRaise} 
+        onClose={() => setSelectedForRaise(null)}
+        onApplyRaise={handleApplyRaise}
       />
 
-      <LeaveManagementModal 
+      <LeaveManagementModal
         isOpen={!!selectedForLeaves}
         employee={selectedForLeaves}
-        onClose={() => setSelectedForLeaves(null)} 
+        onClose={() => setSelectedForLeaves(null)}
         onApproveLeave={handleApproveLeave}
         onRejectLeave={handleRejectLeave}
         onAddLeave={handleAddLeave}
