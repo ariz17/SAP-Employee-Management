@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Layers, Database, Code, GitBranch, Globe } from 'lucide-react';
-import { ODATA_CONFIG } from '../utils/odataConfig';
 
 export function ArchitectureView() {
   const [activeTab, setActiveTab] = useState('model');

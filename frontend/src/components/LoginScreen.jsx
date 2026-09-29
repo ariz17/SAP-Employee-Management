@@ -1,34 +1,12 @@
 import React, { useState } from 'react';
-import { Database, User, Lock, Eye, EyeOff, Check, ArrowRight, Shield, UserCheck } from 'lucide-react';
+import { Database, User, Lock, Check, ArrowRight } from 'lucide-react';
 import { authenticateCredentials } from '../utils/jwtAuth';
 
 export function LoginScreen({ onLogin, employees = [] }) {
-  const [userId, setUserId] = useState('ariz17');
-  const [password, setPassword] = useState('arbab786');
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-
-  const handleQuickLogin = (role) => {
-    if (role === 'admin') {
-      const auth = authenticateCredentials({
-        userId: 'ariz17',
-        password: 'arbab786',
-        employees
-      });
-      if (auth.success) {
-        onLogin({ token: auth.token, user: auth.user });
-      }
-    } else {
-      const auth = authenticateCredentials({
-        userId: '100101',
-        password: 'password123',
-        employees
-      });
-      if (auth.success) {
-        onLogin({ token: auth.token, user: auth.user });
-      }
-    }
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -48,14 +26,14 @@ export function LoginScreen({ onLogin, employees = [] }) {
     if (auth.success) {
       onLogin({ token: auth.token, user: auth.user });
     } else {
-      setError(auth.error || 'Invalid credentials. Use Quick Demo buttons above.');
+      setError(auth.error || 'Invalid username or password.');
     }
   };
 
   return (
     <div className="login-page-bg">
       <div className="login-card-container">
-        {/* Left Side: Brand Panel (Matches Screenshot 5) */}
+        {/* Left Side: Brand Panel */}
         <div className="login-brand-panel">
           <div className="login-brand-icon-box">
             <Database size={32} />
@@ -93,34 +71,11 @@ export function LoginScreen({ onLogin, employees = [] }) {
           </div>
         </div>
 
-        {/* Right Side: Sign-In Form (Matches Screenshot 5) */}
+        {/* Right Side: Sign-In Form */}
         <div className="login-form-panel">
           <div className="login-form-header">
             <h2 className="login-welcome-title">Welcome Back</h2>
             <p className="login-welcome-subtitle">Sign in to access your account</p>
-          </div>
-
-          {/* Quick Demo Access Bar */}
-          <div className="login-demo-bar">
-            <span className="demo-label">Interview Quick Demo:</span>
-            <div className="demo-buttons-row">
-              <button
-                type="button"
-                className="btn-demo-pill"
-                onClick={() => handleQuickLogin('admin')}
-              >
-                <Shield size={12} />
-                <span>HR Admin</span>
-              </button>
-              <button
-                type="button"
-                className="btn-demo-pill"
-                onClick={() => handleQuickLogin('employee')}
-              >
-                <UserCheck size={12} />
-                <span>Employee</span>
-              </button>
-            </div>
           </div>
 
           {error && (

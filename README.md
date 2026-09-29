@@ -12,11 +12,10 @@
 ## 📌 Table of Contents
 1. [Project Overview](#-project-overview)
 2. [How We Created the SAP OData Service (Step-by-Step)](#-how-we-created-the-sap-odata-service-step-by-step)
-3. [How the Frontend Connects to SAP](#-how-the-frontend-connects-to-sap)
-4. [Fresher Interview Speaking Guide (Simple English)](#-fresher-interview-speaking-guide-simple-english)
-5. [Top Fresher Interview Questions & Direct Answers](#-top-fresher-interview-questions--direct-answers)
-6. [How to Run the Project Locally](#-how-to-run-the-project-locally)
-7. [Repository File Structure](#-repository-file-structure)
+3. [System Architecture (3-Tier Enterprise BFF)](#-system-architecture-3-tier-enterprise-bff)
+4. [Fresher Interview Speaking Script & Prep](#-fresher-interview-speaking-script--prep)
+5. [How to Run the Project Locally](#-how-to-run-the-project-locally)
+6. [Repository File Structure](#-repository-file-structure)
 
 ---
 
@@ -107,64 +106,18 @@ Here is the exact short breakdown of how the SAP backend and OData service were 
 
 ---
 
-## 🎤 Fresher Interview Speaking Guide (Simple English)
+## 🎤 Fresher Interview Speaking Script & Prep
 
-Use this exact simple language during campus placement interviews with **HCL, Capgemini, TCS, Wipro, or Cognizant**.
+> 🌟 For full word-for-word scripts, elevator pitches, and answers for companies like **HCL, Capgemini, TCS, Wipro, and Cognizant**, open:
+> 👉 **[`INTERVIEW_SPEECH_GUIDE.md`](./INTERVIEW_SPEECH_GUIDE.md)**
 
-### 1-Minute Elevator Pitch
-> *"Sir/Ma'am, for my second project, I built an **SAP Employee Management System** that bridges SAP NetWeaver backend with a modern React frontend.*
->
-> *In the backend, I used SAP ABAP. I created a database table in **SE11**, built a custom OData service using **SEGW** (Service Builder), and registered it using **/IWFND/MAINT_SERVICE**.*
->
-> *On the frontend, I built a fast, responsive Single Page Application in **React** that consumes this OData service. Employees can view their details and request leave, while HR managers can track team stats and manage records.*
->
-> *Along with my first MERN stack project, this project demonstrates that I understand enterprise architectures and how business software like SAP integrates with modern web technologies."*
-
----
-
-### Step-by-Step Project Explanation (If Interviewer says: "Explain what you did")
-
-Break your answer into 3 easy points:
-
-1. **Backend (SAP ABAP):**
-   > *"First, in SAP GUI, I used transaction SE11 to create a custom transparent table called `ZEMPLY_MNG_DBTAB` with fields like Employee ID, Name, Department, Email, Salary, and Status.*
-   > *Then in transaction SEGW, I created an OData project and imported that table to generate an Entity Set. I activated the service in `/IWFND/MAINT_SERVICE` and verified it using SAP Gateway Client to get JSON responses."*
-
-2. **Frontend (React 18):**
-   > *"For the frontend, I used React with Vite. I designed a clean dashboard with KPI cards for total employees, active count, and average salary, plus dedicated views for employee records and self-service."*
-
-3. **Integration (Vite Proxy + OData):**
-   > *"To connect React with SAP, I set up a proxy in Vite to handle CORS issues and passed basic authentication headers. When the application loads, it fetches real employee records from the SAP OData service. If the server is offline, it safely falls back to local storage so the UI never crashes."*
-
----
-
-## 💡 Top Fresher Interview Questions & Direct Answers
-
-#### Q1: "Why did you build an SAP project if you already had a MERN stack project?"
-> **Answer:** *"My MERN project taught me web basics (MongoDB, Express, React, Node). But top IT firms like HCL and Capgemini work heavily with enterprise clients who run on SAP. I wanted to learn how real enterprise backends work using ABAP, Gateway, and OData, and prove that I can integrate modern frontend frameworks with enterprise SAP systems."*
-
-#### Q2: "What is OData and why is it used in SAP?"
-> **Answer:** *"OData stands for Open Data Protocol. It is a standardized REST-based protocol built on HTTP, JSON, and XML. SAP uses OData because it allows any external frontend—like React, Angular, or SAP Fiori—to perform CRUD operations on SAP business data without needing proprietary SAP GUI protocols."*
-
-#### Q3: "What SAP T-Codes (Transaction Codes) did you use?"
-> **Answer:**
-> * **`SE11`**: ABAP Dictionary (to create table `ZEMPLY_MNG_DBTAB`).
-> * **`SEGW`**: SAP Gateway Service Builder (to create OData project and entity sets).
-> * **`/IWFND/MAINT_SERVICE`**: To activate and register the OData service on the Gateway hub.
-> * **`/IWFND/GW_CLIENT`**: SAP Gateway Client (to test HTTP requests and verify JSON responses).
-
-#### Q4: "What classes are generated when you generate an OData service in SEGW?"
-> **Answer:** *"SAP automatically generates four classes:
-> 1. **MPC** (Model Provider Class) - defines the data model structure.
-> 2. **MPC_EXT** - extension class for model customizations.
-> 3. **DPC** (Data Provider Class) - contains standard CRUD logic.
-> 4. **DPC_EXT** - extension class where we write our custom ABAP code (like in `_GET_ENTITYSET` to fetch table data)."*
-
-#### Q5: "How did you solve CORS issues when calling SAP from React?"
-> **Answer:** *"Since React runs on port 3000 and the SAP server is on a different domain and port (8038), browsers block requests due to Same-Origin Policy (CORS). I solved this by configuring a proxy in `vite.config.js` that intercepts requests to `/sap` and forwards them to the SAP server from the dev server side."*
-
-#### Q6: "What happens if the SAP server is down or unreachable during a demo?"
-> **Answer:** *"I implemented fault-tolerant error handling in `App.jsx`. When the app loads, it tries to fetch from SAP. If there is a network error or timeout, it catches the error and loads fallback mock data from `localStorage` or `mockData.js`. The user still gets a fully functional UI and the system does not crash."*
+The guide covers:
+* **30-Second Elevator Pitch** — Quick summary when asked "Tell me about your 2nd project."
+* **1-Minute Full Introduction** — Structured project pitch highlighting SAP + React integration.
+* **2-to-3 Minute Technical Walkthrough** — End-to-end breakdown from SE11 table to Render BFF to React Vercel UI.
+* **Why BFF Pattern?** — Clear architectural rationale for security and CORS resolution.
+* **Top 6 Fresher Q&A** — Direct spoken answers to common technical questions.
+* **SAP T-Codes & Cheat Sheet** — Quick reference for `SE11`, `SEGW`, `/IWFND/MAINT_SERVICE`, `/IWFND/GW_CLIENT`.
 
 ---
 
@@ -176,20 +129,20 @@ Break your answer into 3 easy points:
 
 ### 2. Run Steps
 ```bash
-# Clone the repository
+# 1. Clone repository
 git clone https://github.com/ariz17/SAP-Employee-Management.git
+cd "SAP Employee Management"
 
-# Move into frontend folder
-cd "SAP Employee Management/frontend"
-
-# Install dependencies
+# 2. Start Backend API Gateway
+cd backend
 npm install
+npm start   # Runs on http://localhost:5000
 
-# Start development server
-npm run dev
+# 3. Start Frontend (in a new terminal)
+cd ../frontend
+npm install
+npm run dev # Runs on http://localhost:3000
 ```
-
-Open your browser at `http://localhost:3000` (or `http://localhost:3001` if 3000 is occupied).
 
 ---
 
@@ -197,31 +150,41 @@ Open your browser at `http://localhost:3000` (or `http://localhost:3001` if 3000
 
 ```text
 ├── README.md                           # Complete project guide & interview preparation
-├── database/
-│   └── zemply_mng_dbtab.tabl           # Transparent SAP DB Table definition
-├── behavior/
-│   ├── ZI_EMPLOYEE_565.bdef            # RAP Behavior Definition (Root & Child)
-│   └── ZBP_I_EMPLOYEE_565.abap         # Behavior Pool Implementation Class
-├── cds/
-│   ├── ZI_EMPLOYEE_DETAILS.ddls        # Core CDS View
-│   └── ZC_EMPLOYEE_DETAILS.ddls        # Projection View with UI Annotations
-├── service/
-│   ├── ZUI_EMPLOYEE_SERVICE_565.srvd   # Service Definition
-│   └── SERVICE_BINDING.md              # Service Binding notes
-├── frontend/
-│   ├── vite.config.js                  # Vite configuration & SAP Gateway Proxy
+├── RENDER_DEPLOYMENT.md                # 2-minute 1-click cloud deployment guide
+├── vercel.json                         # Web deployment configuration
+├── backend/                            # Node.js Express API Gateway / BFF (Render)
+│   ├── server.js                       # Connects to live SAP NetWeaver Gateway OData
+│   └── package.json                    # Backend dependencies
+├── frontend/                           # React 18 + Vite Web Application (Vercel)
+│   ├── vite.config.js                  # Vite configuration & dev proxy
 │   ├── package.json                    # Frontend dependencies
 │   ├── src/
-│   │   ├── App.jsx                     # Core state, live SAP fetch & fallback logic
-│   │   ├── index.css                   # Custom responsive styling
-│   │   ├── components/                 # UI Views (Dashboard, Employees, Self-Service)
+│   │   ├── App.jsx                     # State management & live API integration
+│   │   ├── index.css                   # Custom enterprise responsive styling
+│   │   ├── components/                 # Clean, focused UI views
 │   │   │   ├── DashboardView.jsx       # Headcount & salary analytics
-│   │   │   ├── EmployeesView.jsx       # Employee directory with search/filters
+│   │   │   ├── EmployeesView.jsx       # Live SAP employee directory
 │   │   │   ├── SelfServiceView.jsx     # Profile & leave request portal
-│   │   │   └── ArchitectureView.jsx    # Live SAP architecture explorer
+│   │   │   ├── LeaveRequestsView.jsx   # Leave approvals management
+│   │   │   ├── AnalyticsView.jsx       # Department & compensation charts
+│   │   │   ├── ArchitectureView.jsx    # Live SAP architecture explorer
+│   │   │   └── LoginScreen.jsx         # Clean JWT authentication screen
 │   │   └── data/
 │   │       └── mockData.js             # Fallback dataset matching SAP table schema
-└── vercel.json                         # Web deployment configuration
+├── database/                           # Transparent SAP DB Tables (SE11)
+│   ├── zemply_mng_dbtab.tabl           # Employee master table definition
+│   └── zemply_leave_tab.tabl           # Leave requests table definition
+├── classic_abap/                       # Real SAP ABAP Source Code
+│   ├── ZCL_ZEMPLOYEE_SRV_DPC_EXT.abap  # SEGW DPC_EXT implementation
+│   └── ZCL_INSERT_EMPLOYEE_DATA.abap   # ABAP data generator report
+├── cds/                                # Core Data Services (RAP Views)
+│   ├── ZI_EMPLOYEE_565.ddls            # Interface View
+│   └── ZC_EMPLOYEE_565.ddls            # Projection View
+├── behavior/                           # Managed RAP Behavior Definitions
+│   ├── ZI_EMPLOYEE_565.bdef            # Behavior definition
+│   └── ZBP_I_EMPLOYEE_565.abap         # Behavior implementation class
+└── service/                            # Service Definition
+    └── ZUI_EMPLOYEE_SERVICE_565.srvd
 ```
 
 ---
