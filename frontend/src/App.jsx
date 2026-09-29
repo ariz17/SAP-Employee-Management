@@ -92,15 +92,15 @@ export function App() {
     }
   }, [employees]);
 
+  const backendBase = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? '' : 'https://sap-employee-backend.onrender.com');
+
   // -----------------------------------------------------------------------
-  // Fetch LIVE data from SAP Gateway OData Service (ZEMPLOYEE_SRV_SRV)
-  // Replace YOUR_SAP_USER and YOUR_SAP_PASSWORD with your SAP login credentials
+  // Fetch persisted data from Node.js BFF / API Gateway & SAP Gateway
   // -----------------------------------------------------------------------
   useEffect(() => {
     async function loadEmployees() {
-      const backendBase = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? '' : 'https://sap-employee-backend.onrender.com');
       try {
-        // 1. Try calling the Node.js BFF / API Gateway (Render or localhost)
+        // 1. Fetch from Node.js BFF / API Gateway (Render or localhost)
         const response = await fetch(`${backendBase}/api/employees`);
         if (response.ok) {
           const resData = await response.json();
@@ -148,7 +148,7 @@ export function App() {
           console.log(`✅ Loaded ${sapEmployees.length} employees directly from SAP Gateway!`);
         }
       } catch (err) {
-        console.warn('⚠️ SAP Gateway not reachable, using mock data:', err.message);
+        console.warn('⚠️ SAP Gateway fallback notice:', err.message);
       }
     }
 
@@ -175,18 +175,28 @@ export function App() {
   };
 
   // Handler: Add Employee (RAP Create)
-  const handleAddEmployee = (newEmpData) => {
+  const handleAddEmployee = async (newEmpData) => {
     const newId = (100100 + employees.length + 1).toString();
     const created = {
       Empid: newId,
       ...newEmpData,
       Leaves: []
     };
-    setEmployees([created, ...employees]);
+    setEmployees(prev => [created, ...prev]);
+
+    try {
+      await fetch(`${backendBase}/api/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(created)
+      });
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err.message);
+    }
   };
 
   // Handler: RAP Action giveRaise
-  const handleApplyRaise = (empid, percentage, reason) => {
+  const handleApplyRaise = async (empid, percentage, reason) => {
     setEmployees(prev => prev.map(emp => {
       if (emp.Empid === empid) {
         const currentSalary = parseFloat(emp.Salary) || 0;
@@ -198,13 +208,23 @@ export function App() {
       }
       return emp;
     }));
+
+    try {
+      await fetch(`${backendBase}/api/employees/${empid}/raise`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ percentage, reason })
+      });
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err.message);
+    }
   };
 
   // Handler: RAP Action changeStatus (Cycles ACTIVE -> ON_LEAVE -> INACTIVE)
-  const handleToggleStatus = (empid) => {
+  const handleToggleStatus = async (empid) => {
+    let nextStatus = 'ACTIVE';
     setEmployees(prev => prev.map(emp => {
       if (emp.Empid === empid) {
-        let nextStatus = 'ACTIVE';
         if (emp.Status === 'ACTIVE') nextStatus = 'ON_LEAVE';
         else if (emp.Status === 'ON_LEAVE') nextStatus = 'INACTIVE';
         else nextStatus = 'ACTIVE';
@@ -212,17 +232,35 @@ export function App() {
       }
       return emp;
     }));
+
+    try {
+      await fetch(`${backendBase}/api/employees/${empid}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus })
+      });
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err.message);
+    }
   };
 
   // Handler: Delete Employee
-  const handleDeleteEmployee = (empid) => {
+  const handleDeleteEmployee = async (empid) => {
     if (confirm(`Confirm deletion of employee record ${empid}?`)) {
       setEmployees(prev => prev.filter(e => e.Empid !== empid));
+
+      try {
+        await fetch(`${backendBase}/api/employees/${empid}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.warn('Backend sync failed, saved locally:', err.message);
+      }
     }
   };
 
   // Handler: RAP Action approveLeave (Accept)
-  const handleApproveLeave = (empid, leaveId) => {
+  const handleApproveLeave = async (empid, leaveId) => {
     setEmployees(prev => prev.map(emp => {
       if (emp.Empid === empid) {
         const updatedLeaves = (emp.Leaves || []).map(leave => {
@@ -242,10 +280,20 @@ export function App() {
         Leaves: prev.Leaves.map(l => l.LeaveId === leaveId ? { ...l, Status: 'APPROVED' } : l)
       }));
     }
+
+    try {
+      await fetch(`${backendBase}/api/employees/${empid}/leave/${leaveId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'APPROVED' })
+      });
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err.message);
+    }
   };
 
   // Handler: RAP Action rejectLeave (Reject)
-  const handleRejectLeave = (empid, leaveId) => {
+  const handleRejectLeave = async (empid, leaveId) => {
     setEmployees(prev => prev.map(emp => {
       if (emp.Empid === empid) {
         const updatedLeaves = (emp.Leaves || []).map(leave => {
@@ -265,10 +313,20 @@ export function App() {
         Leaves: prev.Leaves.map(l => l.LeaveId === leaveId ? { ...l, Status: 'REJECTED' } : l)
       }));
     }
+
+    try {
+      await fetch(`${backendBase}/api/employees/${empid}/leave/${leaveId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'REJECTED' })
+      });
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err.message);
+    }
   };
 
   // Handler: Add Leave Request (Composition child create)
-  const handleAddLeave = (empid, leaveData) => {
+  const handleAddLeave = async (empid, leaveData) => {
     const newLeaveId = (80010000 + Math.floor(Math.random() * 9000)).toString();
     const newLeave = {
       LeaveId: newLeaveId,
@@ -292,15 +350,31 @@ export function App() {
         Leaves: [newLeave, ...(prev.Leaves || [])]
       }));
     }
+
+    try {
+      await fetch(`${backendBase}/api/employees/${empid}/leave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLeave)
+      });
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err.message);
+    }
   };
 
   // Reset to initial sample data
-  const handleResetData = () => {
+  const handleResetData = async () => {
     if (confirm("Reset to default SAP sample employees with IT departments?")) {
       setEmployees(INITIAL_EMPLOYEES);
       localStorage.removeItem('sap_workforce_employees');
       localStorage.removeItem('sap_workforce_employees_v2');
       localStorage.removeItem('sap_workforce_employees_v3');
+
+      try {
+        await fetch(`${backendBase}/api/reset`, { method: 'POST' });
+      } catch (err) {
+        console.warn('Backend reset failed:', err.message);
+      }
     }
   };
 

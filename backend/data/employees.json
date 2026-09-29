@@ -1,0 +1,96 @@
+[
+  {
+    "Empid": "100101",
+    "Name": "Parag Tonger",
+    "Email": "PARAG.TONGER@GMAIL.COM",
+    "Dept": "IT Consulting",
+    "Salary": 1250000,
+    "Joindate": "2023-01-15",
+    "Status": "ACTIVE",
+    "Leaves": [
+      {
+        "LeaveId": "80010001",
+        "Empid": "100101",
+        "LeaveType": "Annual Vacation",
+        "StartDate": "2026-10-05",
+        "EndDate": "2026-10-09",
+        "DaysCount": 5,
+        "Reason": "Family vacation",
+        "Status": "APPROVED"
+      }
+    ]
+  },
+  {
+    "Empid": "100102",
+    "Name": "Harshit Sharma",
+    "Email": "HARSHIT.SHARMA@GMAIL.COM",
+    "Dept": "Cloud & Infrastructure",
+    "Salary": 980000,
+    "Joindate": "2022-06-10",
+    "Status": "ACTIVE",
+    "Leaves": [
+      {
+        "LeaveId": "80010002",
+        "Empid": "100102",
+        "LeaveType": "Sick Leave",
+        "StartDate": "2026-09-24",
+        "EndDate": "2026-09-25",
+        "DaysCount": 2,
+        "Reason": "Medical checkup",
+        "Status": "PENDING"
+      }
+    ]
+  },
+  {
+    "Empid": "100103",
+    "Name": "Dikshant Sharma",
+    "Email": "DIKSHANT.SHARMA@GMAIL.COM",
+    "Dept": "Software Engineering",
+    "Salary": 1400000,
+    "Joindate": "2021-11-01",
+    "Status": "ON_LEAVE",
+    "Leaves": [
+      {
+        "LeaveId": "80010003",
+        "Empid": "100103",
+        "LeaveType": "Parental Leave",
+        "StartDate": "2026-09-15",
+        "EndDate": "2026-10-15",
+        "DaysCount": 30,
+        "Reason": "Paternity Leave",
+        "Status": "APPROVED"
+      }
+    ]
+  },
+  {
+    "Empid": "100104",
+    "Name": "Mohd Faiz",
+    "Email": "mohd.faiz@enterprise.com",
+    "Dept": "Cybersecurity",
+    "Salary": 850000,
+    "Joindate": "2023-08-20",
+    "Status": "ACTIVE",
+    "Leaves": []
+  },
+  {
+    "Empid": "100105",
+    "Name": "Kshitiz Goel",
+    "Email": "kshitiz.goel@enterprise.com",
+    "Dept": "Data & AI Analytics",
+    "Salary": 1600000,
+    "Joindate": "2020-04-12",
+    "Status": "ACTIVE",
+    "Leaves": [
+      {
+        "LeaveId": "80010004",
+        "Empid": "100105",
+        "LeaveType": "Training & Cert",
+        "StartDate": "2026-11-02",
+        "EndDate": "2026-11-04",
+        "DaysCount": 3,
+        "Reason": "SAP TechEd Conference",
+        "Status": "PENDING"
+      }
+    ]
+  }
+]
