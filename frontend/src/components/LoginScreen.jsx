@@ -92,7 +92,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
                 <input
                   id="login-username"
                   type="text"
-                  placeholder="Enter your username (e.g. ariz17 or 100101)"
+                  placeholder="HR: ariz17 | Employee: parag12"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
                   className="clean-input with-left-icon"
@@ -108,7 +108,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
                 <input
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder="HR: arbab786 | Employee: parag@12"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="clean-input with-left-icon with-right-btn"
@@ -133,9 +133,11 @@ export function LoginScreen({ onLogin, employees = [] }) {
             </button>
           </form>
 
-          <div className="login-footer-meta">
-            <p>SAP Workforce Management System</p>
-            <span>Managed ABAP RESTful Application Programming</span>
+          <div className="login-footer-meta" style={{ textAlign: 'center', marginTop: '14px' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              <strong>HR Access:</strong> <code>ariz17</code> / <code>arbab786</code> &nbsp;|&nbsp; 
+              <strong>Employee:</strong> <code>parag12</code> / <code>parag@12</code>
+            </p>
           </div>
         </div>
       </div>

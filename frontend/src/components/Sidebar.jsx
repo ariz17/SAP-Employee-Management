@@ -8,46 +8,57 @@ export function Sidebar({
   currentTab, 
   onSelectTab, 
   pendingLeavesCount = 0,
-  onOpenHelp
+  onOpenHelp,
+  userRole = 'admin'
 }) {
-  const menuItems = [
+  const isEmployee = userRole === 'employee';
+
+  const allMenuItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      badge: null
+      badge: null,
+      adminOnly: true
     },
     {
       id: 'employees',
       label: 'Employees',
       icon: Users,
-      badge: null
+      badge: null,
+      adminOnly: true
     },
     {
       id: 'leaves',
       label: 'Leave Requests',
       icon: CalendarCheck,
-      badge: pendingLeavesCount > 0 ? pendingLeavesCount : null
+      badge: pendingLeavesCount > 0 ? pendingLeavesCount : null,
+      adminOnly: true
     },
     {
       id: 'self_service',
-      label: 'Self-Service',
+      label: isEmployee ? 'My Self-Service' : 'Self-Service (ESS)',
       icon: UserCheck,
-      badge: null
+      badge: null,
+      adminOnly: false
     },
     {
       id: 'analytics',
       label: 'Analytics',
       icon: BarChart3,
-      badge: null
+      badge: null,
+      adminOnly: true
     },
     {
       id: 'architecture',
       label: 'Architecture',
       icon: Layers,
-      badge: 'RAP'
+      badge: 'RAP',
+      adminOnly: false
     }
   ];
+
+  const menuItems = allMenuItems.filter(item => isEmployee ? !item.adminOnly : true);
 
   return (
     <aside className="app-sidebar">

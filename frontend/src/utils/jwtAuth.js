@@ -114,14 +114,14 @@ export function authenticateCredentials({ userId, password, employees = [] }) {
   const cleanId = (userId || '').trim();
   const cleanPass = (password || '').trim();
 
-  // 1. Admin Authentication
+  // 1. Admin Authentication (HR)
   if (cleanId.toLowerCase() === 'ariz17' && cleanPass === 'arbab786') {
     const payload = {
       userId: 'ariz17',
       role: 'admin',
-      name: 'Arbab Rizvi (Admin)',
+      name: 'Arbab Rizvi (HR Admin)',
       email: 'admin.ariz17@enterprise.sap',
-      dept: 'SAP BTP Administration'
+      dept: 'HR Administration'
     };
     const token = generateJwtToken(payload);
     return {
@@ -131,8 +131,31 @@ export function authenticateCredentials({ userId, password, employees = [] }) {
     };
   }
 
-  // 2. Employee Authentication
-  // Match by Empid (e.g. 100101), Email, or Name (e.g. "mridul", "harshit", "arbab", etc.)
+  // 2. Direct Employee Authentication: parag12 / parag@12
+  if (cleanId.toLowerCase() === 'parag12' && cleanPass === 'parag@12') {
+    const emp = employees.find(e => e.Empid === '100101') || {
+      Empid: '100101',
+      Name: 'Parag Tonger',
+      Email: 'PARAG.TONGER@GMAIL.COM',
+      Dept: 'IT Consulting'
+    };
+    const payload = {
+      userId: 'parag12',
+      empid: '100101',
+      role: 'employee',
+      name: emp.Name,
+      email: emp.Email,
+      dept: emp.Dept
+    };
+    const token = generateJwtToken(payload);
+    return {
+      success: true,
+      token,
+      user: { ...payload, token }
+    };
+  }
+
+  // 3. Fallback Employee Authentication by Empid / Name
   const target = cleanId.toLowerCase();
   const emp = employees.find(e => {
     const idMatch = e.Empid.toLowerCase() === target;

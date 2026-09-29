@@ -393,12 +393,13 @@ export function App() {
 
   return (
     <div className="portal-app-layout">
-      {/* Left Sidebar (Matches Screenshot) */}
+      {/* Left Sidebar (Role-based) */}
       <Sidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         pendingLeavesCount={pendingLeavesCount}
         onOpenHelp={() => setCurrentTab('architecture')}
+        userRole={currentUser?.role}
       />
 
       {/* Main Workspace Column */}
@@ -412,16 +413,16 @@ export function App() {
           onToggleTheme={toggleTheme}
         />
 
-        {/* Tab Views */}
+        {/* Tab Views (Role-protected) */}
         <main className="portal-page-body">
-          {currentTab === 'dashboard' && (
+          {currentUser?.role !== 'employee' && currentTab === 'dashboard' && (
             <DashboardView
               employees={employees}
               onNavigate={setCurrentTab}
             />
           )}
 
-          {currentTab === 'employees' && (
+          {currentUser?.role !== 'employee' && currentTab === 'employees' && (
             <EmployeesView
               employees={employees}
               onOpenAddModal={() => setIsAddOpen(true)}
@@ -433,7 +434,7 @@ export function App() {
             />
           )}
 
-          {currentTab === 'leaves' && (
+          {currentUser?.role !== 'employee' && currentTab === 'leaves' && (
             <LeaveRequestsView
               employees={employees}
               onApproveLeave={handleApproveLeave}
@@ -441,7 +442,7 @@ export function App() {
             />
           )}
 
-          {currentTab === 'self_service' && (
+          {(currentTab === 'self_service' || (currentUser?.role === 'employee' && currentTab !== 'architecture')) && (
             <SelfServiceView
               currentEmployee={activeEmpRecord}
               employees={employees}
@@ -450,7 +451,7 @@ export function App() {
             />
           )}
 
-          {currentTab === 'analytics' && (
+          {currentUser?.role !== 'employee' && currentTab === 'analytics' && (
             <AnalyticsView employees={employees} />
           )}
 
