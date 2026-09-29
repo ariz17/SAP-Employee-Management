@@ -98,7 +98,7 @@ export function App() {
   // -----------------------------------------------------------------------
   useEffect(() => {
     async function loadEmployees() {
-      const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+      const backendBase = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? '' : 'https://sap-employee-backend.onrender.com');
       try {
         // 1. Try calling the Node.js BFF / API Gateway (Render or localhost)
         const response = await fetch(`${backendBase}/api/employees`);
