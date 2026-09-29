@@ -125,15 +125,15 @@ async function fetchFromSapOData() {
     throw new Error('SAP Gateway returned no employee records');
   }
 
-  // Map SAP fields to standard application structure
+  // Map SAP fields to standard application structure (supporting PascalCase and ALL-CAPS)
   return results.map((emp, idx) => ({
-    Empid: emp.EMPID || String(100101 + idx),
-    Name: emp.NAME || `Employee ${idx + 1}`,
-    Email: emp.EMAIL || `employee${idx + 1}@acme.com`,
-    Dept: emp.DEPT || 'General',
-    Salary: parseFloat(emp.SALARY) || 0,
-    Status: emp.STATUS || 'ACTIVE',
-    Joindate: emp.JOINDATE || '2022-01-01',
+    Empid: emp.Empid || emp.EMPID || String(100101 + idx),
+    Name: emp.Name || emp.NAME || `Employee ${idx + 1}`,
+    Email: emp.Email || emp.EMAIL || `employee${idx + 1}@acme.com`,
+    Dept: emp.Dept || emp.DEPT || 'General',
+    Salary: parseFloat(emp.Salary || emp.SALARY) || 0,
+    Status: emp.Status || emp.STATUS || 'ACTIVE',
+    Joindate: emp.Joindate || emp.JOINDATE || '2022-01-01',
     Leaves: []
   }));
 }

@@ -135,13 +135,13 @@ export function App() {
 
         if (Array.isArray(results) && results.length > 0) {
           const sapEmployees = results.map((emp, idx) => ({
-            Empid: emp.EMPID || String(100101 + idx),
-            Name: emp.NAME || `Employee ${idx + 1}`,
-            Email: emp.EMAIL || `employee${idx + 1}@acme.com`,
-            Dept: emp.DEPT || 'General',
-            Salary: parseFloat(emp.SALARY) || 0,
-            Status: emp.STATUS || 'ACTIVE',
-            Joindate: '2022-01-01',
+            Empid: emp.Empid || emp.EMPID || String(100101 + idx),
+            Name: emp.Name || emp.NAME || `Employee ${idx + 1}`,
+            Email: emp.Email || emp.EMAIL || `employee${idx + 1}@acme.com`,
+            Dept: emp.Dept || emp.DEPT || 'General',
+            Salary: parseFloat(emp.Salary || emp.SALARY) || 0,
+            Status: emp.Status || emp.STATUS || 'ACTIVE',
+            Joindate: emp.Joindate || emp.JOINDATE || '2022-01-01',
             Leaves: []
           }));
           setEmployees(sapEmployees);
