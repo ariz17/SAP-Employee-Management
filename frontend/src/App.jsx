@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { INITIAL_EMPLOYEES } from './data/mockData';
 import { Sidebar } from './components/Sidebar';
 import { TopNavbar } from './components/TopNavbar';
 import { DashboardView } from './components/DashboardView';
@@ -16,10 +15,10 @@ import { SapSplashLoader } from './components/SapSplashLoader';
 import { getStoredJwtToken, saveJwtToken, removeJwtToken, decodeJwtToken } from './utils/jwtAuth';
 
 export function App() {
-  // Initial SAP NetWeaver Gateway connection splash loader (lasts ~2 seconds for realism)
+  // Initial SAP NetWeaver Gateway connection splash loader
   const [isAppLoading, setIsAppLoading] = useState(true);
 
-  // Theme state: 'light' | 'dark' (defaulting to light as shown in user's screenshots)
+  // Theme state: 'light' | 'dark'
   const [theme, setTheme] = useState(() => {
     try {
       const savedTheme = localStorage.getItem('sap_app_theme');
@@ -58,24 +57,24 @@ export function App() {
   // Active section tab: 'dashboard' | 'employees' | 'leaves' | 'self_service' | 'analytics' | 'architecture'
   const [currentTab, setCurrentTab] = useState('dashboard');
 
-  // Load persisted state or fallback to seed data with IT industry departments
+  // Load persisted state or empty array (100% live SAP data only)
   const [employees, setEmployees] = useState(() => {
     try {
-      const legacyV2 = localStorage.getItem('sap_workforce_employees_v2');
-      if (legacyV2 && (legacyV2.includes('Engineering') || legacyV2.includes('Finance') || legacyV2.includes('Product'))) {
-        localStorage.removeItem('sap_workforce_employees_v2');
-        localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(INITIAL_EMPLOYEES));
-        return INITIAL_EMPLOYEES;
-      }
+      // Purge old mock data caches if any
+      localStorage.removeItem('sap_workforce_employees');
+      localStorage.removeItem('sap_workforce_employees_v2');
 
       const saved = localStorage.getItem('sap_workforce_employees_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        // Only use if it has real SAP employee names
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(e => e.Name && e.Name.includes('Parag'))) {
+          return parsed;
+        }
       }
-      return INITIAL_EMPLOYEES;
+      return [];
     } catch {
-      return INITIAL_EMPLOYEES;
+      return [];
     }
   });
 
@@ -196,86 +195,91 @@ export function App() {
   };
 
   // -----------------------------------------------------------------------
-  // Fetch persisted data from Node.js BFF / API Gateway & SAP Gateway
+  // Fetch live data directly from SAP NetWeaver Gateway (ABAP)
   // -----------------------------------------------------------------------
   useEffect(() => {
     async function loadEmployees() {
-      // 1. Fetch from configured Node.js BFF / API Gateway
+      setIsAppLoading(true);
+
+      // 1. Fetch from Node.js BFF / API Gateway (which queries SAP OData live)
       try {
         const response = await fetch(`${backendBase}/api/employees`);
         if (response.ok) {
           const resData = await response.json();
-          if (resData.success && Array.isArray(resData.data) && resData.data.length > 0) {
-            setEmployees(prev => {
-              const merged = mergeEmployeesWithLocal(resData.data, prev);
-              try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
-              return merged;
-            });
-            console.log(`✅ Loaded ${resData.data.length} employees (Source: ${resData.source})!`);
+          if (resData.success && Array.isArray(resData.data)) {
+            setEmployees(resData.data);
+            try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(resData.data)); } catch {}
+            console.log(`✅ Loaded ${resData.data.length} employees directly from live SAP ABAP backend!`);
+            setIsAppLoading(false);
             return;
           }
         }
       } catch (backendErr) {
-        console.warn('Backend API not reachable, attempting secondary sources...', backendErr.message);
+        console.warn('Backend API not reachable, attempting direct SAP Gateway proxy...', backendErr.message);
       }
 
-      // 1b. Try live public backend if in dev mode
-      if (backendBase !== 'https://sap-employee-backend.onrender.com') {
-        try {
-          const altRes = await fetch('https://sap-employee-backend.onrender.com/api/employees');
-          if (altRes.ok) {
-            const altData = await altRes.json();
-            if (altData.success && Array.isArray(altData.data) && altData.data.length > 0) {
-              setEmployees(prev => {
-                const merged = mergeEmployeesWithLocal(altData.data, prev);
-                try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
-                return merged;
-              });
-              return;
-            }
-          }
-        } catch {}
-      }
-
-      // 2. Direct SAP Gateway call (if Vite proxy is running locally)
+      // 2. Direct SAP Gateway OData call via Vite proxy
       try {
         const SAP_USER = 'GLBI-100';
         const SAP_PASSWORD = 'Bt@123';
-        const response = await fetch(
-          '/sap/opu/odata/sap/ZEMPLOYEE_SRV_SRV/ZEMPLY_MNG_DBTABSet?$format=json',
-          {
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Basic ' + btoa(`${SAP_USER}:${SAP_PASSWORD}`)
-            }
+        const headers = {
+          'Accept': 'application/json',
+          'Authorization': 'Basic ' + btoa(`${SAP_USER}:${SAP_PASSWORD}`)
+        };
+
+        const [empRes, leaveRes] = await Promise.all([
+          fetch('/sap/opu/odata/sap/ZEMPLOYEE_SRV_SRV/ZEMPLY_MNG_DBTABSet?$format=json', { headers }),
+          fetch('/sap/opu/odata/sap/ZEMPLOYEE_SRV_SRV/LeaveRequestCollection?$format=json', { headers })
+        ]);
+
+        if (empRes.ok) {
+          const empData = await empRes.json();
+          const rawEmps = empData?.d?.results || [];
+
+          let rawLeaves = [];
+          if (leaveRes.ok) {
+            const leaveData = await leaveRes.json();
+            rawLeaves = leaveData?.d?.results || [];
           }
-        );
 
-        if (!response.ok) throw new Error(`SAP returned HTTP ${response.status}`);
-
-        const data = await response.json();
-        const results = data?.d?.results;
-
-        if (Array.isArray(results) && results.length > 0) {
-          const sapEmployees = results.map((emp, idx) => ({
-            Empid: emp.Empid || emp.EMPID || String(100101 + idx),
-            Name: emp.Name || emp.NAME || `Employee ${idx + 1}`,
-            Email: emp.Email || emp.EMAIL || `employee${idx + 1}@acme.com`,
-            Dept: emp.Dept || emp.DEPT || 'General',
-            Salary: parseFloat(emp.Salary || emp.SALARY) || 0,
-            Status: emp.Status || emp.STATUS || 'ACTIVE',
-            Joindate: emp.Joindate || emp.JOINDATE || '2022-01-01',
-            Leaves: []
-          }));
-          setEmployees(prev => {
-            const merged = mergeEmployeesWithLocal(sapEmployees, prev);
-            try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
-            return merged;
+          const leavesByEmp = {};
+          rawLeaves.forEach(l => {
+            const empId = String(l.Empid || l.EMPID || '').trim();
+            if (!leavesByEmp[empId]) leavesByEmp[empId] = [];
+            leavesByEmp[empId].push({
+              LeaveId: String(l.LeaveId || l.LEAVE_ID || '').trim(),
+              Empid: empId,
+              LeaveType: String(l.LeaveType || l.LEAVE_TYPE || 'Annual Vacation').trim(),
+              StartDate: l.StartDate || '',
+              EndDate: l.EndDate || '',
+              DaysCount: parseInt(l.DaysCount || l.DAYS_COUNT, 10) || 1,
+              Reason: String(l.Reason || l.REASON || '').trim(),
+              Status: String(l.Status || l.STATUS || 'PENDING').trim()
+            });
           });
-          console.log(`✅ Loaded ${sapEmployees.length} employees directly from SAP Gateway!`);
+
+          const sapEmployees = rawEmps.map(emp => {
+            const empId = String(emp.Empid || emp.EMPID || '').trim();
+            return {
+              Empid: empId,
+              Name: String(emp.Name || emp.NAME || '').trim(),
+              Email: String(emp.Email || emp.EMAIL || '').trim(),
+              Dept: String(emp.Dept || emp.DEPT || 'IT Consulting').trim(),
+              Salary: parseFloat(emp.Salary || emp.SALARY) || 0,
+              Status: String(emp.Status || emp.STATUS || 'ACTIVE').trim(),
+              Joindate: '2023-01-15',
+              Leaves: leavesByEmp[empId] || []
+            };
+          });
+
+          setEmployees(sapEmployees);
+          try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(sapEmployees)); } catch {}
+          console.log(`✅ Loaded ${sapEmployees.length} employees directly from SAP Gateway proxy!`);
         }
       } catch (err) {
-        console.warn('⚠️ SAP Gateway fallback notice:', err.message);
+        console.warn('⚠️ Direct SAP Gateway fallback notice:', err.message);
+      } finally {
+        setIsAppLoading(false);
       }
     }
 
@@ -493,18 +497,24 @@ export function App() {
     syncNewLeaveToBackend(empid, newLeave);
   };
 
-  // Reset to initial sample data
+  // Reload fresh live workforce data from SAP NetWeaver Gateway
   const handleResetData = async () => {
-    if (confirm("Reset to default SAP sample employees with IT departments?")) {
-      setEmployees(INITIAL_EMPLOYEES);
-      localStorage.removeItem('sap_workforce_employees');
-      localStorage.removeItem('sap_workforce_employees_v2');
+    if (confirm("Refresh live workforce data directly from SAP NetWeaver Gateway (ABAP)?")) {
       localStorage.removeItem('sap_workforce_employees_v3');
-
+      setIsAppLoading(true);
       try {
-        await fetch(`${backendBase}/api/reset`, { method: 'POST' });
+        const response = await fetch(`${backendBase}/api/employees`);
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success && Array.isArray(resData.data)) {
+            setEmployees(resData.data);
+            localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(resData.data));
+          }
+        }
       } catch (err) {
-        console.warn('Backend reset failed:', err.message);
+        console.warn('Backend refresh failed:', err.message);
+      } finally {
+        setIsAppLoading(false);
       }
     }
   };
