@@ -1,5 +1,0 @@
-@EndUserText.label: 'Employee & Workforce Management Service'
-define service ZUI_EMPLOYEE_SERVICE_565 {
-  expose ZC_EMPLOYEE_DETAILS as Employee;
-  expose ZC_EMPLOYEE_LEAVE   as LeaveRequest;
-}
