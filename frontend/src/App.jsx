@@ -11,13 +11,9 @@ import { LoginScreen } from './components/LoginScreen';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { GiveRaiseModal } from './components/GiveRaiseModal';
 import { LeaveManagementModal } from './components/LeaveManagementModal';
-import { SapSplashLoader } from './components/SapSplashLoader';
 import { getStoredJwtToken, saveJwtToken, removeJwtToken, decodeJwtToken } from './utils/jwtAuth';
 
 export function App() {
-  // Initial SAP NetWeaver Gateway connection splash loader
-  const [isAppLoading, setIsAppLoading] = useState(true);
-
   // Theme state: 'light' | 'dark'
   const [theme, setTheme] = useState(() => {
     try {
@@ -191,8 +187,6 @@ export function App() {
   // -----------------------------------------------------------------------
   useEffect(() => {
     async function loadEmployees() {
-      setIsAppLoading(true);
-
       // 1. Fetch from Node.js BFF / API Gateway (which queries SAP OData live)
       try {
         const response = await fetch(`${backendBase}/api/employees`);
@@ -202,7 +196,6 @@ export function App() {
             setEmployees(resData.data);
             try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(resData.data)); } catch {}
             console.log(`✅ Loaded ${resData.data.length} employees directly from live SAP ABAP backend!`);
-            setIsAppLoading(false);
             return;
           }
         }
@@ -270,8 +263,6 @@ export function App() {
         }
       } catch (err) {
         console.warn('⚠️ Direct SAP Gateway fallback notice:', err.message);
-      } finally {
-        setIsAppLoading(false);
       }
     }
 
@@ -493,7 +484,6 @@ export function App() {
   const handleResetData = async () => {
     if (confirm("Refresh live workforce data directly from SAP NetWeaver Gateway (ABAP)?")) {
       localStorage.removeItem('sap_workforce_employees_v3');
-      setIsAppLoading(true);
       try {
         const response = await fetch(`${backendBase}/api/employees`);
         if (response.ok) {
@@ -505,8 +495,6 @@ export function App() {
         }
       } catch (err) {
         console.warn('Backend refresh failed:', err.message);
-      } finally {
-        setIsAppLoading(false);
       }
     }
   };
@@ -521,22 +509,11 @@ export function App() {
 
   // If not logged in, render the clean split-card LoginScreen
   if (!currentUser) {
-    return (
-      <>
-        {isAppLoading && (
-          <SapSplashLoader onComplete={() => setIsAppLoading(false)} duration={2100} />
-        )}
-        <LoginScreen onLogin={handleLogin} employees={employees} />
-      </>
-    );
+    return <LoginScreen onLogin={handleLogin} employees={employees} />;
   }
 
   return (
-    <>
-      {isAppLoading && (
-        <SapSplashLoader onComplete={() => setIsAppLoading(false)} duration={2100} />
-      )}
-      <div className="portal-app-layout">
+    <div className="portal-app-layout">
       {/* Left Sidebar (Role-based) */}
       <Sidebar
         currentTab={currentTab}
@@ -628,6 +605,5 @@ export function App() {
         onAddLeave={handleAddLeave}
       />
     </div>
-    </>
   );
 }
