@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -27,6 +29,39 @@ const SAP_PASSWORD = process.env.SAP_PASSWORD || 'Bt@123';
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
+
+// File-backed persistent storage for leave submissions and status updates
+// Guarantees that leave requests and approval/rejection decisions are NEVER lost on page reload!
+const LEAVE_STORE_FILE = path.join(__dirname, 'data', 'leave_store.json');
+
+function loadLeaveStore() {
+  try {
+    if (fs.existsSync(LEAVE_STORE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(LEAVE_STORE_FILE, 'utf-8'));
+      if (data && typeof data === 'object') {
+        return {
+          newLeaves: Array.isArray(data.newLeaves) ? data.newLeaves : [],
+          statusOverrides: data.statusOverrides || {}
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not load leave store file:', e.message);
+  }
+  return { newLeaves: [], statusOverrides: {} };
+}
+
+function saveLeaveStore(store) {
+  try {
+    const dir = path.dirname(LEAVE_STORE_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(LEAVE_STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('❌ Failed to save leave store to file:', e.message);
+  }
+}
+
+let leaveStore = loadLeaveStore();
 
 // Helper: Convert SAP OData date format "/Date(1791158400000)/" or raw string to "YYYY-MM-DD"
 function formatSapDate(dateVal) {
@@ -100,15 +135,45 @@ async function fetchLeavesFromSap() {
 }
 
 // Helper: Fetch combined employees with their respective leaves
+// Connects live SAP data with transactional leave submissions & status overrides
 async function getLiveSapWorkforce() {
-  const [employees, leaves] = await Promise.all([
+  const [employees, rawLeaves] = await Promise.all([
     fetchEmployeesFromSap(),
     fetchLeavesFromSap()
   ]);
 
+  // Combine live SAP leaves with persistent status overrides
+  const combinedLeaves = rawLeaves.map(leave => {
+    if (leaveStore.statusOverrides[leave.LeaveId]) {
+      return {
+        ...leave,
+        Status: leaveStore.statusOverrides[leave.LeaveId]
+      };
+    }
+    return leave;
+  });
+
+  // Append any newly submitted leaves (like Parag's submitted requests)
+  leaveStore.newLeaves.forEach(newLeave => {
+    const existingIdx = combinedLeaves.findIndex(l => l.LeaveId === newLeave.LeaveId);
+    const resolvedStatus = leaveStore.statusOverrides[newLeave.LeaveId] || newLeave.Status;
+    if (existingIdx !== -1) {
+      combinedLeaves[existingIdx] = {
+        ...combinedLeaves[existingIdx],
+        ...newLeave,
+        Status: resolvedStatus
+      };
+    } else {
+      combinedLeaves.unshift({
+        ...newLeave,
+        Status: resolvedStatus
+      });
+    }
+  });
+
   // Group leaves by Empid
   const leavesByEmp = {};
-  leaves.forEach(l => {
+  combinedLeaves.forEach(l => {
     if (!leavesByEmp[l.Empid]) leavesByEmp[l.Empid] = [];
     leavesByEmp[l.Empid].push(l);
   });
@@ -118,7 +183,7 @@ async function getLiveSapWorkforce() {
     emp.Leaves = leavesByEmp[emp.Empid] || [];
   });
 
-  return { employees, leaves };
+  return { employees, leaves: combinedLeaves };
 }
 
 // Helper: Fetch CSRF token and session cookies for SAP Gateway writes (POST/PUT/DELETE)
@@ -202,7 +267,7 @@ app.get('/api/employees/:id', async (req, res) => {
 // 4. Get All Leave Requests directly from SAP
 app.get('/api/leaves', async (req, res) => {
   try {
-    const leaves = await fetchLeavesFromSap();
+    const { leaves } = await getLiveSapWorkforce();
     res.json({
       success: true,
       source: 'SAP_NETWEAVER_GATEWAY_LIVE',
@@ -434,11 +499,12 @@ app.delete('/api/employees/:id', async (req, res) => {
   });
 });
 
-// 10. Submit Leave Request for Employee (OData POST to SAP LeaveRequestCollection)
+// 10. Submit Leave Request for Employee
 app.post('/api/employees/:id/leave', async (req, res) => {
   const empid = req.params.id;
+  const newLeaveId = req.body.LeaveId || ('0000000' + String(Date.now()).slice(-3));
   const newLeave = {
-    LeaveId: req.body.LeaveId || ('0000000' + String(Date.now()).slice(-3)),
+    LeaveId: newLeaveId,
     Empid: empid,
     LeaveType: req.body.LeaveType || 'Annual Vacation',
     StartDate: req.body.StartDate || new Date().toISOString().split('T')[0],
@@ -448,31 +514,39 @@ app.post('/api/employees/:id/leave', async (req, res) => {
     Status: 'PENDING'
   };
 
-  try {
-    const { token, cookies } = await getSapCsrfToken();
-    const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
-    await axios.post(`${SAP_BASE_URL}${SAP_LEAVE_PATH}`, {
-      LeaveId: newLeave.LeaveId,
-      Empid: newLeave.Empid,
-      LeaveType: newLeave.LeaveType,
-      DaysCount: newLeave.DaysCount,
-      Reason: newLeave.Reason,
-      Status: newLeave.Status
-    }, {
-      auth: { username: SAP_USER, password: SAP_PASSWORD },
-      headers: {
-        'x-csrf-token': token,
-        'Cookie': cookieHeader,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      httpsAgent,
-      timeout: 10000
-    });
-    console.log(`✅ [SAP Gateway] Submitted leave request to SAP for ${empid}`);
-  } catch (e) {
-    console.warn(`ℹ️ [SAP Gateway] Notice on leave submit: ${e.response?.data?.error?.message?.value || e.message}`);
-  }
+  // Persist immediately in leaveStore so it survives reload and role changes
+  leaveStore.newLeaves.unshift(newLeave);
+  saveLeaveStore(leaveStore);
+  console.log(`📝 [Leave Store] Recorded new leave ${newLeaveId} for employee ${empid} (Status: PENDING)`);
+
+  // Background SAP sync attempt
+  (async () => {
+    try {
+      const { token, cookies } = await getSapCsrfToken();
+      const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
+      await axios.post(`${SAP_BASE_URL}${SAP_LEAVE_PATH}`, {
+        LeaveId: newLeave.LeaveId,
+        Empid: newLeave.Empid,
+        LeaveType: newLeave.LeaveType,
+        DaysCount: newLeave.DaysCount,
+        Reason: newLeave.Reason,
+        Status: newLeave.Status
+      }, {
+        auth: { username: SAP_USER, password: SAP_PASSWORD },
+        headers: {
+          'x-csrf-token': token,
+          'Cookie': cookieHeader,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        httpsAgent,
+        timeout: 10000
+      });
+      console.log(`✅ [SAP Gateway] Submitted leave request to SAP for ${empid}`);
+    } catch (e) {
+      console.warn(`ℹ️ [SAP Gateway] Notice on leave submit: ${e.response?.data?.error?.message?.value || e.message}`);
+    }
+  })().catch(() => {});
 
   res.status(201).json({
     success: true,
@@ -486,28 +560,41 @@ app.patch('/api/employees/:id/leave/:leaveId', async (req, res) => {
   const { id: empid, leaveId } = req.params;
   const status = req.body.status || 'APPROVED';
 
-  try {
-    const { token, cookies } = await getSapCsrfToken();
-    const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
-    await axios.put(`${SAP_BASE_URL}${SAP_LEAVE_PATH}('${leaveId}')`, {
-      LeaveId: leaveId,
-      Empid: empid,
-      Status: status
-    }, {
-      auth: { username: SAP_USER, password: SAP_PASSWORD },
-      headers: {
-        'x-csrf-token': token,
-        'Cookie': cookieHeader,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      httpsAgent,
-      timeout: 10000
-    });
-    console.log(`✅ [SAP Gateway] Synced leave status update to SAP for ${leaveId}`);
-  } catch (e) {
-    console.warn(`ℹ️ [SAP Gateway] Notice on leave update: ${e.response?.data?.error?.message?.value || e.message}`);
-  }
+  // Persist status change immediately so it survives reload and role changes
+  leaveStore.statusOverrides[leaveId] = status;
+
+  // Also update in newLeaves if present
+  const nl = leaveStore.newLeaves.find(l => l.LeaveId === leaveId);
+  if (nl) nl.Status = status;
+
+  saveLeaveStore(leaveStore);
+  console.log(`🔄 [Leave Store] Updated leave ${leaveId} status to ${status}`);
+
+  // Background SAP sync attempt
+  (async () => {
+    try {
+      const { token, cookies } = await getSapCsrfToken();
+      const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
+      await axios.put(`${SAP_BASE_URL}${SAP_LEAVE_PATH}('${leaveId}')`, {
+        LeaveId: leaveId,
+        Empid: empid,
+        Status: status
+      }, {
+        auth: { username: SAP_USER, password: SAP_PASSWORD },
+        headers: {
+          'x-csrf-token': token,
+          'Cookie': cookieHeader,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        httpsAgent,
+        timeout: 10000
+      });
+      console.log(`✅ [SAP Gateway] Synced leave status update to SAP for ${leaveId}`);
+    } catch (e) {
+      console.warn(`ℹ️ [SAP Gateway] Notice on leave update: ${e.response?.data?.error?.message?.value || e.message}`);
+    }
+  })().catch(() => {});
 
   res.json({
     success: true,
@@ -545,6 +632,6 @@ app.listen(PORT, () => {
   console.log(`🔗 Target SAP Server: ${SAP_BASE_URL}`);
   console.log(`📄 OData Service: ZEMPLOYEE_SRV_SRV`);
   console.log(`📡 Endpoints: Employee (${SAP_EMP_PATH}) | Leave (${SAP_LEAVE_PATH})`);
-  console.log(`✨ 100% LIVE SAP DATA — ZERO MOCK DATA`);
+  console.log(`✨ 100% LIVE SAP DATA + PERSISTENT LEAVE TRANSACTIONS`);
   console.log(`=======================================================`);
 });

@@ -156,41 +156,33 @@ export function App() {
     return merged;
   };
 
-  // Background helper to sync leave status to backend (trying primary backend and fallback)
+  // Background helper to sync leave status to backend
   const syncLeaveStatusToBackend = async (empid, leaveId, status) => {
-    const urls = [];
-    if (backendBase) urls.push(`${backendBase}/api/employees/${empid}/leave/${leaveId}`);
-    urls.push(`/api/employees/${empid}/leave/${leaveId}`);
-    urls.push(`https://sap-employee-backend.onrender.com/api/employees/${empid}/leave/${leaveId}`);
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status })
-        });
-        if (res.ok) return;
-      } catch {}
+    const primaryUrl = backendBase ? `${backendBase}/api/employees/${empid}/leave/${leaveId}` : `/api/employees/${empid}/leave/${leaveId}`;
+    try {
+      const res = await fetch(primaryUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) return;
+    } catch (e) {
+      console.warn('Sync leave status failed:', e.message);
     }
   };
 
   // Background helper to sync newly created leave to backend
   const syncNewLeaveToBackend = async (empid, newLeave) => {
-    const urls = [];
-    if (backendBase) urls.push(`${backendBase}/api/employees/${empid}/leave`);
-    urls.push(`/api/employees/${empid}/leave`);
-    urls.push(`https://sap-employee-backend.onrender.com/api/employees/${empid}/leave`);
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newLeave)
-        });
-        if (res.ok) return;
-      } catch {}
+    const primaryUrl = backendBase ? `${backendBase}/api/employees/${empid}/leave` : `/api/employees/${empid}/leave`;
+    try {
+      const res = await fetch(primaryUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLeave)
+      });
+      if (res.ok) return;
+    } catch (e) {
+      console.warn('Sync new leave failed:', e.message);
     }
   };
 
@@ -460,7 +452,7 @@ export function App() {
 
   // Handler: Add Leave Request (Composition child create)
   const handleAddLeave = async (empid, leaveData) => {
-    const newLeaveId = (80010000 + Math.floor(Math.random() * 9000)).toString();
+    const newLeaveId = '00000' + (10000 + Math.floor(Math.random() * 90000)).toString();
     const newLeave = {
       LeaveId: newLeaveId,
       Empid: empid,
@@ -493,8 +485,8 @@ export function App() {
       }));
     }
 
-    // Background sync to backend
-    syncNewLeaveToBackend(empid, newLeave);
+    // Persist to backend so it survives refresh, logout, and appears in HR Leave Requests
+    await syncNewLeaveToBackend(empid, newLeave);
   };
 
   // Reload fresh live workforce data from SAP NetWeaver Gateway

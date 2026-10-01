@@ -1,0 +1,17 @@
+{
+  "newLeaves": [
+    {
+      "LeaveId": "0000000951",
+      "Empid": "100101",
+      "LeaveType": "Annual Vacation",
+      "StartDate": "2026-10-15",
+      "EndDate": "2026-10-20",
+      "DaysCount": 5,
+      "Reason": "Conference trip",
+      "Status": "PENDING"
+    }
+  ],
+  "statusOverrides": {
+    "0000000002": "REJECTED"
+  }
+}
