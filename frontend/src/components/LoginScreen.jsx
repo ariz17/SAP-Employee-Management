@@ -59,14 +59,14 @@ export function LoginScreen({ onLogin, employees = [] }) {
               <span className="feature-check-icon">
                 <Check size={14} />
               </span>
-              <span>Live SAP NetWeaver Gateway Service <code>ZEMPLOYEE_SRV_SRV</code></span>
+              <span>Live SAP NetWeaver Gateway OData Integration</span>
             </div>
 
             <div className="login-feature-item">
               <span className="feature-check-icon">
                 <Check size={14} />
               </span>
-              <span>Direct database sync with ABAP tables (<code>ZEMPLY_MNG_DBTAB</code>)</span>
+              <span>Real-time database sync with SAP ABAP backend</span>
             </div>
 
             <div className="login-feature-item">
