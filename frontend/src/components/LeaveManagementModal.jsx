@@ -22,9 +22,9 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
       return;
     }
 
-    // Simulating RAP Validation: validateDates
+    // Date validation
     if (new Date(startDate) > new Date(endDate)) {
-      setError('SAP Validation Error: Leave start date cannot be after end date (validateDates).');
+      setError('Leave start date cannot be after end date.');
       return;
     }
 
@@ -55,10 +55,10 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
           <div>
             <h3>
               <Calendar size={20} style={{ color: '#8b5cf6' }} />
-              <span>Leave & Time-Off Management (RAP Composition)</span>
+              <span>Leave & Time-Off Management (SAP NetWeaver)</span>
             </h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Child Entity: <code>ZC_EMPLOYEE_LEAVE</code> associated to parent <code>{employee.Name}</code> ({employee.Empid})
+              Record in SAP table: <code>ZEMPLY_LEAVE_TAB</code> for <code>{employee.Name}</code> ({employee.Empid})
             </p>
           </div>
           <button className="close-btn" onClick={onClose}><X size={18} /></button>
@@ -144,7 +144,7 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button type="button" className="btn btn-sm btn-secondary" onClick={() => setShowApplyForm(false)}>Cancel</button>
-              <button type="submit" className="btn btn-sm btn-primary">Submit to SAP RAP</button>
+              <button type="submit" className="btn btn-sm btn-primary">Submit to SAP Gateway</button>
             </div>
           </form>
         )}
@@ -199,7 +199,7 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
                           <button 
                             className="btn btn-sm btn-primary"
                             onClick={() => onApproveLeave(employee.Empid, leave.LeaveId)}
-                            title="Execute RAP Action approveLeave"
+                            title="Approve Leave in SAP"
                             style={{ background: '#059669', borderColor: '#059669' }}
                           >
                             <Check size={12} />

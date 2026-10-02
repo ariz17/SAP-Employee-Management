@@ -51,7 +51,7 @@ export function LoginScreen({ onLogin, employees = [] }) {
           </h1>
 
           <p className="login-brand-desc">
-            Connecting enterprise workforce operations, department analytics, and leave approvals through one secure SAP RAP platform.
+            Connecting enterprise workforce operations, department analytics, and leave approvals through SAP NetWeaver Gateway.
           </p>
 
           <div className="login-features-list">
@@ -59,21 +59,21 @@ export function LoginScreen({ onLogin, employees = [] }) {
               <span className="feature-check-icon">
                 <Check size={14} />
               </span>
-              <span>Enterprise RAP Object <code>ZC_EMPLOYEE_DETAILS</code></span>
+              <span>Live SAP NetWeaver Gateway Service <code>ZEMPLOYEE_SRV_SRV</code></span>
             </div>
 
             <div className="login-feature-item">
               <span className="feature-check-icon">
                 <Check size={14} />
               </span>
-              <span>Centralized real-time leave approval tracking</span>
+              <span>Direct database sync with ABAP tables (<code>ZEMPLY_MNG_DBTAB</code>)</span>
             </div>
 
             <div className="login-feature-item">
               <span className="feature-check-icon">
                 <Check size={14} />
               </span>
-              <span>Role-based access & automated determinations</span>
+              <span>Role-based access for HR Admin & Employee Self-Service</span>
             </div>
           </div>
         </div>
@@ -142,10 +142,26 @@ export function LoginScreen({ onLogin, employees = [] }) {
             </button>
           </form>
 
-          <div className="login-footer-meta" style={{ textAlign: 'center', marginTop: '14px' }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              <strong>HR Access:</strong> <code>ariz17</code> / <code>arbab786</code> &nbsp;|&nbsp; 
-              <strong>Employee:</strong> <code>parag12</code> / <code>parag@12</code>
+          <div className="login-footer-meta" style={{ textAlign: 'center', marginTop: '16px', lineHeight: '1.6' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+              <strong>HR Access:</strong>{' '}
+              <code 
+                style={{ cursor: 'pointer' }} 
+                onClick={() => { setUserId('ariz17'); setPassword('arbab786'); }}
+                title="Click to fill HR Admin credentials"
+              >
+                ariz17
+              </code> / <code>arbab786</code>
+            </p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '6px 0 0 0' }}>
+              <strong>Employee:</strong>{' '}
+              <code 
+                style={{ cursor: 'pointer' }} 
+                onClick={() => { setUserId('parag12'); setPassword('parag@12'); }}
+                title="Click to fill Parag credentials"
+              >
+                parag12
+              </code> / <code>parag@12</code>
             </p>
           </div>
         </div>

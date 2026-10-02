@@ -19,12 +19,12 @@ export function TopNavbar({
       case 'employees':
         return {
           title: 'Employees Directory',
-          subtitle: 'Manage employee master records conforming to SAP RAP entity ZC_EMPLOYEE_DETAILS.'
+          subtitle: 'Manage employee master records stored in SAP table ZEMPLY_MNG_DBTAB.'
         };
       case 'leaves':
         return {
           title: 'Leave Requests Desk',
-          subtitle: 'Process and approve or reject employee leave requests via RAP composition.'
+          subtitle: 'Process and approve or reject employee leave requests via SAP NetWeaver Gateway.'
         };
       case 'self_service':
         return {
@@ -38,8 +38,8 @@ export function TopNavbar({
         };
       case 'architecture':
         return {
-          title: 'SAP BTP Architecture Explorer',
-          subtitle: 'Technical specification of CDS Views, Managed RAP Behavior, and tables.'
+          title: 'SAP System Architecture Explorer',
+          subtitle: 'Technical specification of SE11 tables, SEGW OData service, and Node.js BFF.'
         };
       default:
         return {

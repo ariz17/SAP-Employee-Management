@@ -25,7 +25,7 @@ export function GiveRaiseModal({ isOpen, onClose, employee, onApplyRaise }) {
         <div className="modal-header">
           <h3>
             <TrendingUp size={20} style={{ color: '#38bdf8' }} />
-            <span>SAP RAP Action: <code>giveRaise</code></span>
+            <span>SAP Salary Action: <code>Apply Raise</code></span>
           </h3>
           <button className="close-btn" onClick={onClose}><X size={18} /></button>
         </div>
@@ -109,7 +109,7 @@ export function GiveRaiseModal({ isOpen, onClose, employee, onApplyRaise }) {
 
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button id="btn-execute-raise" type="submit" className="btn btn-primary">Execute RAP Action</button>
+            <button id="btn-execute-raise" type="submit" className="btn btn-primary">Apply Salary Raise</button>
           </div>
         </form>
       </div>

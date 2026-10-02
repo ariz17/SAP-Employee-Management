@@ -8,10 +8,12 @@
       "EndDate": "2026-10-20",
       "DaysCount": 5,
       "Reason": "Conference trip",
-      "Status": "PENDING"
+      "Status": "REJECTED"
     }
   ],
   "statusOverrides": {
-    "0000000002": "REJECTED"
+    "0000000002": "REJECTED",
+    "0000000951": "REJECTED",
+    "0000000004": "REJECTED"
   }
 }

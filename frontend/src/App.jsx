@@ -193,8 +193,11 @@ export function App() {
         if (response.ok) {
           const resData = await response.json();
           if (resData.success && Array.isArray(resData.data)) {
-            setEmployees(resData.data);
-            try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(resData.data)); } catch {}
+            setEmployees(prev => {
+              const merged = mergeEmployeesWithLocal(prev, resData.data);
+              try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(merged)); } catch {}
+              return merged;
+            });
             console.log(`✅ Loaded ${resData.data.length} employees directly from live SAP ABAP backend!`);
             return;
           }
@@ -296,7 +299,11 @@ export function App() {
       ...newEmpData,
       Leaves: []
     };
-    setEmployees(prev => [created, ...prev]);
+    setEmployees(prev => {
+      const updated = [created, ...prev];
+      try { localStorage.setItem('sap_workforce_employees_v3', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     try {
       await fetch(`${backendBase}/api/employees`, {

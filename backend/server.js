@@ -63,6 +63,40 @@ function saveLeaveStore(store) {
 
 let leaveStore = loadLeaveStore();
 
+// File-backed persistent storage for employee records, raises, and deletions
+// Guarantees that newly created employees and modifications survive reloads even before/during SAP sync
+const EMP_STORE_FILE = path.join(__dirname, 'data', 'employee_store.json');
+
+function loadEmployeeStore() {
+  try {
+    if (fs.existsSync(EMP_STORE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(EMP_STORE_FILE, 'utf-8'));
+      if (data && typeof data === 'object') {
+        return {
+          newEmployees: Array.isArray(data.newEmployees) ? data.newEmployees : [],
+          updates: data.updates || {},
+          deletedEmpids: Array.isArray(data.deletedEmpids) ? data.deletedEmpids : []
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not load employee store file:', e.message);
+  }
+  return { newEmployees: [], updates: {}, deletedEmpids: [] };
+}
+
+function saveEmployeeStore(store) {
+  try {
+    const dir = path.dirname(EMP_STORE_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(EMP_STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('❌ Failed to save employee store to file:', e.message);
+  }
+}
+
+let employeeStore = loadEmployeeStore();
+
 // Helper: Convert SAP OData date format "/Date(1791158400000)/" or raw string to "YYYY-MM-DD"
 function formatSapDate(dateVal) {
   if (!dateVal) return '';
@@ -178,12 +212,36 @@ async function getLiveSapWorkforce() {
     leavesByEmp[l.Empid].push(l);
   });
 
+  // 1. Filter out deleted employees
+  let resolvedEmployees = employees.filter(e => !employeeStore.deletedEmpids.includes(e.Empid));
+
+  // 2. Apply any salary or status updates
+  resolvedEmployees = resolvedEmployees.map(emp => {
+    if (employeeStore.updates[emp.Empid]) {
+      return { ...emp, ...employeeStore.updates[emp.Empid] };
+    }
+    return emp;
+  });
+
+  // 3. Prepend any newly created employees not yet in the SAP response
+  employeeStore.newEmployees.forEach(newEmp => {
+    if (!employeeStore.deletedEmpids.includes(newEmp.Empid)) {
+      const idx = resolvedEmployees.findIndex(e => e.Empid === newEmp.Empid);
+      const withUpdates = { ...newEmp, ...(employeeStore.updates[newEmp.Empid] || {}) };
+      if (idx !== -1) {
+        resolvedEmployees[idx] = { ...resolvedEmployees[idx], ...withUpdates };
+      } else {
+        resolvedEmployees.unshift(withUpdates);
+      }
+    }
+  });
+
   // Attach leaves to each employee
-  employees.forEach(emp => {
+  resolvedEmployees.forEach(emp => {
     emp.Leaves = leavesByEmp[emp.Empid] || [];
   });
 
-  return { employees, leaves: combinedLeaves };
+  return { employees: resolvedEmployees, leaves: combinedLeaves };
 }
 
 // Helper: Fetch CSRF token and session cookies for SAP Gateway writes (POST/PUT/DELETE)
@@ -292,6 +350,18 @@ app.post('/api/employees', async (req, res) => {
     Leaves: []
   };
 
+  // Persist immediately in employeeStore so UI and reloads never lose it!
+  const existingIdx = employeeStore.newEmployees.findIndex(e => e.Empid === newEmp.Empid);
+  if (existingIdx !== -1) {
+    employeeStore.newEmployees[existingIdx] = newEmp;
+  } else {
+    employeeStore.newEmployees.unshift(newEmp);
+  }
+  employeeStore.deletedEmpids = employeeStore.deletedEmpids.filter(id => id !== newEmp.Empid);
+  saveEmployeeStore(employeeStore);
+  console.log(`📝 [Employee Store] Saved new employee ${newEmp.Empid} (${newEmp.Name})`);
+
+  // OData POST to SAP ZEMPLY_MNG_DBTABSet (Synchronous or background)
   try {
     const { token, cookies } = await getSapCsrfToken();
     const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
@@ -304,7 +374,7 @@ app.post('/api/employees', async (req, res) => {
       Status: newEmp.Status
     };
 
-    await axios.post(`${SAP_BASE_URL}${SAP_EMP_PATH}`, sapPayload, {
+    const sapRes = await axios.post(`${SAP_BASE_URL}${SAP_EMP_PATH}`, sapPayload, {
       auth: { username: SAP_USER, password: SAP_PASSWORD },
       headers: {
         'x-csrf-token': token,
@@ -315,7 +385,7 @@ app.post('/api/employees', async (req, res) => {
       httpsAgent,
       timeout: 10000
     });
-    console.log(`✅ [SAP Gateway] Created employee in SAP: ${newEmp.Empid}`);
+    console.log(`✅ [SAP Gateway] Created employee in SAP table ZEMPLY_MNG_DBTAB: ${newEmp.Empid} (Status: ${sapRes.status})`);
   } catch (e) {
     console.warn(`ℹ️ [SAP Gateway] Notice on create ${newEmp.Empid}: ${e.response?.data?.error?.message?.value || e.message}`);
   }
@@ -478,6 +548,14 @@ app.patch('/api/employees/:id/status', async (req, res) => {
 app.delete('/api/employees/:id', async (req, res) => {
   const empid = req.params.id;
 
+  // Persist deletion locally
+  if (!employeeStore.deletedEmpids.includes(empid)) {
+    employeeStore.deletedEmpids.push(empid);
+  }
+  employeeStore.newEmployees = employeeStore.newEmployees.filter(e => e.Empid !== empid);
+  saveEmployeeStore(employeeStore);
+  console.log(`🗑️ [Employee Store] Marked employee ${empid} as deleted`);
+
   try {
     const { token, cookies } = await getSapCsrfToken();
     const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
@@ -623,6 +701,23 @@ app.get('/api/sap-status', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Error Handling Middleware for JSON parsing and unexpected route errors
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ success: false, error: 'Malformed JSON payload received' });
+  }
+  console.error('⚠️ Unhandled request error:', err.message);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+});
+
+// Protect process from unhandled crashes
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Uncaught Exception intercepted:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ Unhandled Rejection intercepted:', reason);
 });
 
 // Start Express Server

@@ -38,7 +38,7 @@ export function EmployeesView({
       <div className="view-header-row">
         <div>
           <h2 className="view-page-title">Employees</h2>
-          <p className="view-page-subtitle">Manage employee master records registered in the SAP RAP system.</p>
+          <p className="view-page-subtitle">Manage employee master records registered in the SAP NetWeaver system.</p>
         </div>
 
         <button 
@@ -194,7 +194,7 @@ export function EmployeesView({
                             type="button"
                             className="btn-action-update"
                             onClick={() => onOpenRaiseModal(emp)}
-                            title="Execute RAP Action giveRaise"
+                            title="Update Salary in SAP"
                           >
                             <span>Raise</span>
                           </button>

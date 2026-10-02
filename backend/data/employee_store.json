@@ -1,0 +1,16 @@
+{
+  "newEmployees": [
+    {
+      "Empid": "100108",
+      "Name": "Mridul Tripathi",
+      "Email": "mridul.tri@acme.com",
+      "Dept": "Cloud & Infrastructure",
+      "Salary": 120000,
+      "Status": "ACTIVE",
+      "Joindate": "2026-10-02",
+      "Leaves": []
+    }
+  ],
+  "updates": {},
+  "deletedEmpids": []
+}

@@ -7,17 +7,21 @@ CLASS zcl_zemployee_srv_dpc_ext DEFINITION
     METHODS /iwbep/if_mgw_appl_srv_runtime~get_entityset REDEFINITION.
     METHODS /iwbep/if_mgw_appl_srv_runtime~create_entity REDEFINITION.
     METHODS /iwbep/if_mgw_appl_srv_runtime~update_entity REDEFINITION.
+    METHODS /iwbep/if_mgw_appl_srv_runtime~delete_entity REDEFINITION.
 
   PROTECTED SECTION.
     METHODS zemply_mng_dbtab_get_entityset REDEFINITION.
 
 ENDCLASS.
 
+
+
 CLASS zcl_zemployee_srv_dpc_ext IMPLEMENTATION.
 
   METHOD zemply_mng_dbtab_get_entityset.
     SELECT * FROM zemply_mng_dbtab INTO CORRESPONDING FIELDS OF TABLE et_entityset.
   ENDMETHOD.
+
 
   METHOD /iwbep/if_mgw_appl_srv_runtime~get_entityset.
     IF iv_entity_set_name = 'LeaveRequestCollection'.
@@ -51,12 +55,12 @@ CLASS zcl_zemployee_srv_dpc_ext IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD /iwbep/if_mgw_appl_srv_runtime~create_entity.
     IF iv_entity_set_name = 'LeaveRequestCollection'.
       DATA ls_leave TYPE zemply_leave_tab.
 
       io_data_provider->read_entry_data( IMPORTING es_data = ls_leave ).
-
       ls_leave-mandt = sy-mandt.
       IF ls_leave-status IS INITIAL.
         ls_leave-status = 'PENDING'.
@@ -71,8 +75,25 @@ CLASS zcl_zemployee_srv_dpc_ext IMPLEMENTATION.
         CHANGING
           cr_data = er_entity
       ).
+
+    ELSEIF iv_entity_set_name = 'ZEMPLY_MNG_DBTABSet'.
+      DATA ls_emp TYPE zemply_mng_dbtab.
+
+      io_data_provider->read_entry_data( IMPORTING es_data = ls_emp ).
+      ls_emp-mandt = sy-mandt.
+
+      INSERT zemply_mng_dbtab FROM ls_emp.
+      COMMIT WORK.
+
+      copy_data_to_ref(
+        EXPORTING
+          is_data = ls_emp
+        CHANGING
+          cr_data = er_entity
+      ).
     ENDIF.
   ENDMETHOD.
+
 
   METHOD /iwbep/if_mgw_appl_srv_runtime~update_entity.
     IF iv_entity_set_name = 'LeaveRequestCollection'.
@@ -101,6 +122,7 @@ CLASS zcl_zemployee_srv_dpc_ext IMPLEMENTATION.
         CHANGING
           cr_data = er_entity
       ).
+
     ELSEIF iv_entity_set_name = 'ZEMPLY_MNG_DBTABSet'.
       DATA: ls_emp_upd TYPE zemply_mng_dbtab,
             lv_empid   TYPE zemply_mng_dbtab-empid,
@@ -127,6 +149,21 @@ CLASS zcl_zemployee_srv_dpc_ext IMPLEMENTATION.
         CHANGING
           cr_data = er_entity
       ).
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD /iwbep/if_mgw_appl_srv_runtime~delete_entity.
+    IF iv_entity_set_name = 'ZEMPLY_MNG_DBTABSet'.
+      DATA: lv_empid TYPE zemply_mng_dbtab-empid,
+            ls_key   LIKE LINE OF it_key_tab.
+
+      READ TABLE it_key_tab INTO ls_key WITH KEY name = 'Empid'.
+      IF sy-subrc = 0.
+        lv_empid = ls_key-value.
+        DELETE FROM zemply_mng_dbtab WHERE empid = lv_empid.
+        COMMIT WORK.
+      ENDIF.
     ENDIF.
   ENDMETHOD.
 

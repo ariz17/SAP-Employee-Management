@@ -107,7 +107,7 @@ export function Sidebar({
           </div>
           <div className="help-content">
             <h4>Need Help?</h4>
-            <p>SAP BTP / RAP Cloud</p>
+            <p>SAP NetWeaver Gateway</p>
           </div>
         </div>
       </div>

@@ -155,6 +155,30 @@ export function authenticateCredentials({ userId, password, employees = [] }) {
     };
   }
 
+  // 3. Direct Employee Authentication: kshitiz12 / kshitiz@12
+  if (cleanId.toLowerCase() === 'kshitiz12' && cleanPass === 'kshitiz@12') {
+    const emp = employees.find(e => e.Empid === '100105') || {
+      Empid: '100105',
+      Name: 'Kshitiz Goel',
+      Email: 'kshitiz.goel@acme.com',
+      Dept: 'Data & AI Analytics'
+    };
+    const payload = {
+      userId: 'kshitiz12',
+      empid: '100105',
+      role: 'employee',
+      name: emp.Name,
+      email: emp.Email,
+      dept: emp.Dept
+    };
+    const token = generateJwtToken(payload);
+    return {
+      success: true,
+      token,
+      user: { ...payload, token }
+    };
+  }
+
   // 3. Fallback Employee Authentication by Empid / Name
   const target = cleanId.toLowerCase();
   const emp = employees.find(e => {

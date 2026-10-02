@@ -75,7 +75,7 @@ export function LeaveRequestsView({
         <div className="table-card-topbar">
           <div>
             <h2 className="table-card-title" style={{ fontSize: '1.25rem' }}>Leave Requests</h2>
-            <p className="table-card-subtitle">All leave requests submitted by staff and processed in RAP composition.</p>
+            <p className="table-card-subtitle">All leave requests submitted by staff and processed via SAP NetWeaver Gateway.</p>
           </div>
           <span className="count-pill-badge">{allLeaves.length} Requests</span>
         </div>
