@@ -8,10 +8,11 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+  const [reviewTarget, setReviewTarget] = useState(null); // { leave, action, comment }
 
   if (!isOpen || !employee) return null;
 
-  const leaves = employee.Leaves || [];
+  const leaves = (employee.Leaves || []).filter(l => Boolean(l && l.StartDate && l.EndDate));
 
   const handleApply = (e) => {
     e.preventDefault();
@@ -28,6 +29,11 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
       return;
     }
 
+    if (!reason.trim()) {
+      setError(`Please specify a description/reason for ${leaveType}.`);
+      return;
+    }
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = Math.abs(end - start);
@@ -38,7 +44,7 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
       StartDate: startDate,
       EndDate: endDate,
       DaysCount: daysCount,
-      Reason: reason || 'Personal Leave',
+      Reason: reason.trim(),
       Status: 'PENDING'
     });
 
@@ -46,6 +52,17 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
     setReason('');
     setStartDate('');
     setEndDate('');
+  };
+
+  const handleConfirmDecision = () => {
+    if (!reviewTarget) return;
+    const { leave, action, comment } = reviewTarget;
+    if (action === 'APPROVE') {
+      onApproveLeave(employee.Empid, leave.LeaveId, comment.trim());
+    } else {
+      onRejectLeave(employee.Empid, leave.LeaveId, comment.trim());
+    }
+    setReviewTarget(null);
   };
 
   return (
@@ -112,10 +129,11 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Leave Type</label>
+                <label>Leave Category</label>
                 <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)}>
                   <option value="Annual Vacation">Annual Vacation</option>
                   <option value="Sick Leave">Sick Leave</option>
+                  <option value="Casual Leave">Casual Leave</option>
                   <option value="Parental">Parental Leave</option>
                   <option value="Training & Cert">Training / Conference</option>
                 </select>
@@ -132,13 +150,17 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
               </div>
             </div>
 
-            <div className="form-group" style={{ marginTop: '12px', marginBottom: '12px' }}>
-              <label>Reason / Notes</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Annual summer holidays" 
+            {/* Detailed Description Box */}
+            <div className="form-group" style={{ marginTop: '12px', marginBottom: '14px' }}>
+              <label>Reason & Detailed Description *</label>
+              <textarea 
+                rows={3}
+                placeholder="Enter detailed reason for leave request..." 
                 value={reason} 
                 onChange={(e) => setReason(e.target.value)} 
+                className="clean-input"
+                style={{ width: '100%', resize: 'vertical', fontSize: '0.8rem', marginTop: '4px' }}
+                required
               />
             </div>
 
@@ -155,7 +177,7 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
             <thead>
               <tr style={{ background: 'rgba(255, 255, 255, 0.02)' }}>
                 <th style={{ padding: '10px 14px' }}>Leave ID</th>
-                <th style={{ padding: '10px 14px' }}>Type</th>
+                <th style={{ padding: '10px 14px' }}>Type & Reason</th>
                 <th style={{ padding: '10px 14px' }}>Duration</th>
                 <th style={{ padding: '10px 14px' }}>Dates</th>
                 <th style={{ padding: '10px 14px' }}>Status</th>
@@ -173,10 +195,17 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
                 leaves.map((leave) => (
                   <tr key={leave.LeaveId}>
                     <td style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)' }}>{leave.LeaveId}</td>
-                    <td style={{ padding: '10px 14px', fontWeight: 600 }}>{leave.LeaveType}</td>
+                    <td style={{ padding: '10px 14px', maxWidth: '200px' }}>
+                      <div style={{ fontWeight: 600 }}>{leave.LeaveType}</div>
+                      {leave.Reason && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
+                          "{leave.Reason}"
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '10px 14px' }}>{leave.DaysCount} day{leave.DaysCount > 1 ? 's' : ''}</td>
                     <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>
-                      {leave.StartDate} ➔ {leave.EndDate}
+                      {leave.StartDate && leave.EndDate ? `${leave.StartDate} ➔ ${leave.EndDate}` : (leave.StartDate || leave.EndDate || '—')}
                     </td>
                     <td style={{ padding: '10px 14px' }}>
                       {leave.Status === 'APPROVED' && (
@@ -192,14 +221,19 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
                           Rejected
                         </span>
                       )}
+                      {leave.HrComment && leave.HrComment.trim() !== '' && (
+                        <div style={{ fontSize: '0.7rem', color: leave.Status === 'APPROVED' ? '#10b981' : '#f87171', marginTop: '2px' }}>
+                          HR: {leave.HrComment}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                       {leave.Status === 'PENDING' ? (
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
                           <button 
                             className="btn btn-sm btn-primary"
-                            onClick={() => onApproveLeave(employee.Empid, leave.LeaveId)}
-                            title="Approve Leave in SAP"
+                            onClick={() => setReviewTarget({ leave, action: 'APPROVE', comment: '' })}
+                            title="Approve Leave with remarks"
                             style={{ background: '#059669', borderColor: '#059669' }}
                           >
                             <Check size={12} />
@@ -207,8 +241,8 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
                           </button>
                           <button 
                             className="btn btn-sm btn-danger"
-                            onClick={() => onRejectLeave(employee.Empid, leave.LeaveId)}
-                            title="Reject leave request"
+                            onClick={() => setReviewTarget({ leave, action: 'REJECT', comment: '' })}
+                            title="Reject leave with remarks"
                           >
                             <X size={12} />
                             <span>Reject</span>
@@ -234,6 +268,46 @@ export function LeaveManagementModal({ isOpen, onClose, employee, onApproveLeave
             </tbody>
           </table>
         </div>
+
+        {/* Modal Decision Prompt */}
+        {reviewTarget && (
+          <div style={{
+            marginTop: '16px',
+            padding: '14px',
+            background: 'rgba(0, 0, 0, 0.6)',
+            border: `1px solid ${reviewTarget.action === 'APPROVE' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+            borderRadius: 'var(--radius-md)'
+          }}>
+            <h4 style={{ fontSize: '0.85rem', marginBottom: '8px', color: reviewTarget.action === 'APPROVE' ? '#10b981' : '#f87171' }}>
+              Confirm {reviewTarget.action === 'APPROVE' ? 'Approval' : 'Rejection'} for Leave #{reviewTarget.leave.LeaveId}
+            </h4>
+            <div className="form-group" style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '0.75rem' }}>HR Decision Note (Optional):</label>
+              <input
+                type="text"
+                placeholder={reviewTarget.action === 'APPROVE' ? 'e.g. Approved, tasks handed over...' : 'e.g. Critical sprint deadline, reschedule...'}
+                value={reviewTarget.comment}
+                onChange={(e) => setReviewTarget(prev => ({ ...prev, comment: e.target.value }))}
+                className="clean-input"
+                style={{ fontSize: '0.8rem' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button type="button" className="btn btn-sm btn-secondary" onClick={() => setReviewTarget(null)}>Cancel</button>
+              <button
+                type="button"
+                className={`btn btn-sm ${reviewTarget.action === 'APPROVE' ? 'btn-primary' : 'btn-danger'}`}
+                onClick={handleConfirmDecision}
+                style={{
+                  background: reviewTarget.action === 'APPROVE' ? '#10b981' : '#ef4444',
+                  borderColor: reviewTarget.action === 'APPROVE' ? '#10b981' : '#ef4444'
+                }}
+              >
+                Confirm {reviewTarget.action === 'APPROVE' ? 'Accept' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn btn-secondary" onClick={onClose}>Close</button>

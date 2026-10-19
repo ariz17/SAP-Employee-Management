@@ -5,12 +5,14 @@ import { DashboardView } from './components/DashboardView';
 import { EmployeesView } from './components/EmployeesView';
 import { LeaveRequestsView } from './components/LeaveRequestsView';
 import { SelfServiceView } from './components/SelfServiceView';
+import { NotificationsView } from './components/NotificationsView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { ArchitectureView } from './components/ArchitectureView';
 import { LoginScreen } from './components/LoginScreen';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { GiveRaiseModal } from './components/GiveRaiseModal';
 import { LeaveManagementModal } from './components/LeaveManagementModal';
+import { SendMessageModal } from './components/SendMessageModal';
 import { getStoredJwtToken, saveJwtToken, removeJwtToken, decodeJwtToken } from './utils/jwtAuth';
 
 export function App() {
@@ -65,7 +67,10 @@ export function App() {
         const parsed = JSON.parse(saved);
         // Only use if it has real SAP employee names
         if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(e => e.Name && e.Name.includes('Parag'))) {
-          return parsed;
+          return parsed.map(emp => ({
+            ...emp,
+            Leaves: (emp.Leaves || []).filter(l => Boolean(l && l.StartDate && l.EndDate))
+          }));
         }
       }
       return [];
@@ -78,9 +83,43 @@ export function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedForRaise, setSelectedForRaise] = useState(null);
   const [selectedForLeaves, setSelectedForLeaves] = useState(null);
+  const [selectedForMessage, setSelectedForMessage] = useState(null);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
 
-  // Active employee for self-service preview
+  // Active employee for self-service & notification preview
   const [simulatedEmpId, setSimulatedEmpId] = useState('100101');
+
+  // Notifications state (only user-triggered actions, deduplicated)
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sap_workforce_notifications_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const seen = new Set();
+          const clean = [];
+          parsed.filter(n => !n.id.startsWith('notif_100101_')).forEach(n => {
+            const key = `${n.empid}_${n.type}_${n.message}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              clean.push(n);
+            }
+          });
+          return clean;
+        }
+      }
+    } catch {}
+    return [];
+  });
+
+  // Sync notifications to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sap_workforce_notifications_v1', JSON.stringify(notifications));
+    } catch (e) {
+      console.warn("Storage error", e);
+    }
+  }, [notifications]);
 
   // Sync to localStorage
   useEffect(() => {
@@ -125,11 +164,11 @@ export function App() {
         } else {
           // If either local or remote has a processed status (APPROVED/REJECTED), preserve that status
           if (localL.Status === 'APPROVED' || localL.Status === 'REJECTED') {
-            leaveMap.set(localL.LeaveId, { ...remoteL, ...localL, Status: localL.Status });
+            leaveMap.set(localL.LeaveId, { ...remoteL, ...localL, Status: localL.Status, HrComment: localL.HrComment || remoteL.HrComment || '' });
           } else if (remoteL.Status === 'APPROVED' || remoteL.Status === 'REJECTED') {
-            leaveMap.set(localL.LeaveId, remoteL);
+            leaveMap.set(localL.LeaveId, { ...localL, ...remoteL, HrComment: remoteL.HrComment || localL.HrComment || '' });
           } else {
-            leaveMap.set(localL.LeaveId, { ...remoteL, ...localL });
+            leaveMap.set(localL.LeaveId, { ...remoteL, ...localL, HrComment: localL.HrComment || remoteL.HrComment || '' });
           }
         }
       });
@@ -137,7 +176,7 @@ export function App() {
       return {
         ...remoteEmp,
         ...localEmp, // keep any local raises or status toggles
-        Leaves: Array.from(leaveMap.values())
+        Leaves: Array.from(leaveMap.values()).filter(l => Boolean(l && l.StartDate && l.EndDate))
       };
     });
 
@@ -153,13 +192,13 @@ export function App() {
   };
 
   // Background helper to sync leave status to backend
-  const syncLeaveStatusToBackend = async (empid, leaveId, status) => {
+  const syncLeaveStatusToBackend = async (empid, leaveId, status, hrComment = '') => {
     const primaryUrl = backendBase ? `${backendBase}/api/employees/${empid}/leave/${leaveId}` : `/api/employees/${empid}/leave/${leaveId}`;
     try {
       const res = await fetch(primaryUrl, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, hrComment })
       });
       if (res.ok) return;
     } catch (e) {
@@ -272,6 +311,50 @@ export function App() {
     loadEmployees();
   }, []); // runs once when the app opens
 
+  // Load initial notifications from backend API with strict deduplication
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const response = await fetch(`${backendBase}/api/notifications`);
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success && Array.isArray(resData.data)) {
+            const cleanRemote = resData.data.filter(n => !n.id.startsWith('notif_100101_'));
+            setNotifications(prev => {
+              const seen = new Set();
+              const unique = [];
+              const localReadMap = new Map(prev.map(p => [p.id, p.read]));
+
+              for (const item of cleanRemote) {
+                const key = `${item.empid}_${item.type}_${item.message}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  const isRead = localReadMap.has(item.id) ? localReadMap.get(item.id) : item.read;
+                  unique.push({ ...item, read: isRead });
+                }
+              }
+
+              for (const localItem of prev) {
+                if (localItem.id.startsWith('notif_100101_')) continue;
+                const key = `${localItem.empid}_${localItem.type}_${localItem.message}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  unique.push(localItem);
+                }
+              }
+
+              unique.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+              return unique;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Backend notification fetch notice:', err.message);
+      }
+    }
+    loadNotifications();
+  }, [backendBase]);
+
 
   // Handle Login via JWT
   const handleLogin = ({ token, user }) => {
@@ -339,6 +422,19 @@ export function App() {
     } catch (err) {
       console.warn('Backend sync failed, saved locally:', err.message);
     }
+
+    // Automatically trigger notification for target employee
+    const targetEmp = employees.find(e => e.Empid === empid);
+    const updatedSalary = targetEmp ? Math.round((parseFloat(targetEmp.Salary) || 0) * (1 + (percentage / 100))) : 0;
+    dispatchNotification({
+      empid,
+      type: 'SALARY_RAISE',
+      title: `Salary Increment Applied (+${percentage}%)`,
+      message: `Congratulations! HR has approved a ${percentage}% increment on your compensation. Your new monthly salary is ₹${updatedSalary.toLocaleString('en-IN')}.${reason ? ` Note: "${reason}"` : ''}`,
+      sender: currentUser?.name ? `${currentUser.name} (HR)` : 'HR Administration Desk',
+      priority: 'HIGH',
+      metadata: { percentage, newSalary: updatedSalary, reason }
+    });
   };
 
   // Handler: RAP Action changeStatus (Cycles ACTIVE -> ON_LEAVE -> INACTIVE)
@@ -381,13 +477,13 @@ export function App() {
   };
 
   // Handler: RAP Action approveLeave (Accept)
-  const handleApproveLeave = async (empid, leaveId) => {
+  const handleApproveLeave = async (empid, leaveId, hrComment = '') => {
     setEmployees(prev => {
       const updated = prev.map(emp => {
         if (emp.Empid === empid) {
           const updatedLeaves = (emp.Leaves || []).map(leave => {
             if (leave.LeaveId === leaveId) {
-              return { ...leave, Status: 'APPROVED' };
+              return { ...leave, Status: 'APPROVED', HrComment: hrComment };
             }
             return leave;
           });
@@ -406,22 +502,33 @@ export function App() {
     if (selectedForLeaves && selectedForLeaves.Empid === empid) {
       setSelectedForLeaves(prev => ({
         ...prev,
-        Leaves: (prev.Leaves || []).map(l => l.LeaveId === leaveId ? { ...l, Status: 'APPROVED' } : l)
+        Leaves: (prev.Leaves || []).map(l => l.LeaveId === leaveId ? { ...l, Status: 'APPROVED', HrComment: hrComment } : l)
       }));
     }
 
     // Background sync to backend
-    syncLeaveStatusToBackend(empid, leaveId, 'APPROVED');
+    syncLeaveStatusToBackend(empid, leaveId, 'APPROVED', hrComment);
+
+    // Automatically trigger notification for target employee
+    dispatchNotification({
+      empid,
+      type: 'LEAVE_STATUS',
+      title: 'Leave Request Approved',
+      message: `Your leave request (#${leaveId}) has been APPROVED by HR Desk.${hrComment ? ` HR Note: "${hrComment}"` : ''}`,
+      sender: currentUser?.name ? `${currentUser.name} (HR)` : 'HR Desk',
+      priority: 'HIGH',
+      metadata: { leaveId, status: 'APPROVED', hrComment }
+    });
   };
 
   // Handler: RAP Action rejectLeave (Reject)
-  const handleRejectLeave = async (empid, leaveId) => {
+  const handleRejectLeave = async (empid, leaveId, hrComment = '') => {
     setEmployees(prev => {
       const updated = prev.map(emp => {
         if (emp.Empid === empid) {
           const updatedLeaves = (emp.Leaves || []).map(leave => {
             if (leave.LeaveId === leaveId) {
-              return { ...leave, Status: 'REJECTED' };
+              return { ...leave, Status: 'REJECTED', HrComment: hrComment };
             }
             return leave;
           });
@@ -440,12 +547,23 @@ export function App() {
     if (selectedForLeaves && selectedForLeaves.Empid === empid) {
       setSelectedForLeaves(prev => ({
         ...prev,
-        Leaves: (prev.Leaves || []).map(l => l.LeaveId === leaveId ? { ...l, Status: 'REJECTED' } : l)
+        Leaves: (prev.Leaves || []).map(l => l.LeaveId === leaveId ? { ...l, Status: 'REJECTED', HrComment: hrComment } : l)
       }));
     }
 
     // Background sync to backend
-    syncLeaveStatusToBackend(empid, leaveId, 'REJECTED');
+    syncLeaveStatusToBackend(empid, leaveId, 'REJECTED', hrComment);
+
+    // Automatically trigger notification for target employee
+    dispatchNotification({
+      empid,
+      type: 'LEAVE_STATUS',
+      title: 'Leave Request Declined',
+      message: `Your leave request (#${leaveId}) has been REJECTED by HR Desk.${hrComment ? ` Reason: "${hrComment}"` : ''}`,
+      sender: currentUser?.name ? `${currentUser.name} (HR)` : 'HR Desk',
+      priority: 'HIGH',
+      metadata: { leaveId, status: 'REJECTED', hrComment }
+    });
   };
 
   // Handler: Add Leave Request (Composition child create)
@@ -506,13 +624,98 @@ export function App() {
     }
   };
 
+  // Notification Dispatcher & Handlers (Strictly single delivery)
+  const dispatchNotification = async ({ empid, type, title, message, sender, priority = 'NORMAL', metadata = {} }) => {
+    const notifId = 'notif_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newNotif = {
+      id: notifId,
+      empid: String(empid).trim(),
+      type,
+      title,
+      message,
+      sender: sender || (currentUser?.name ? `${currentUser.name} (HR)` : 'HR Administration Desk'),
+      priority,
+      timestamp: new Date().toISOString(),
+      read: false,
+      metadata
+    };
+
+    setNotifications(prev => {
+      // Prevent duplicate insertion of identical notification
+      const exists = prev.some(n => 
+        n.id === newNotif.id || 
+        (n.empid === newNotif.empid && n.type === newNotif.type && n.message === newNotif.message)
+      );
+      if (exists) return prev;
+      return [newNotif, ...prev];
+    });
+
+    try {
+      await fetch(`${backendBase}/api/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newNotif)
+      });
+    } catch (err) {
+      console.warn('Backend notification sync failed, preserved locally:', err.message);
+    }
+  };
+
+  const handleMarkNotificationAsRead = async (notifId) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+    try {
+      await fetch(`${backendBase}/api/notifications/${notifId}/read`, { method: 'PATCH' });
+    } catch (err) {
+      console.warn('Backend mark-read failed:', err.message);
+    }
+  };
+
+  const handleMarkAllNotificationsAsRead = async (empid) => {
+    setNotifications(prev => prev.map(n => {
+      if (!empid || String(n.empid).trim() === String(empid).trim()) {
+        return { ...n, read: true };
+      }
+      return n;
+    }));
+    try {
+      await fetch(`${backendBase}/api/notifications/read-all`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empid })
+      });
+    } catch (err) {
+      console.warn('Backend mark-all-read failed:', err.message);
+    }
+  };
+
+  const handleSendDirectMessage = async ({ empid, subject, message, priority }) => {
+    await dispatchNotification({
+      empid,
+      type: 'HR_MESSAGE',
+      title: subject || 'Direct Message from HR',
+      message,
+      sender: currentUser?.name ? `${currentUser.name} (HR)` : 'HR Administration Desk',
+      priority,
+      metadata: { subject }
+    });
+  };
+
   // Pending leaves count for sidebar badge
   const pendingLeavesCount = employees.reduce((acc, emp) => {
     return acc + (emp.Leaves ? emp.Leaves.filter(l => l.Status === 'PENDING').length : 0);
   }, 0);
 
-  // Active Employee Record for Self-Service
+  // Active Employee Record for Self-Service & Notifications
   const activeEmpRecord = employees.find(e => e.Empid === (currentUser?.role === 'employee' ? currentUser.empid : simulatedEmpId)) || employees[0];
+  const activeEmpId = activeEmpRecord?.Empid || '100101';
+
+  // Unread notifications count for sidebar badge
+  const unreadNotificationsCount = notifications.filter(n => {
+    if (currentUser?.role === 'employee') {
+      return String(n.empid).trim() === String(currentUser.empid).trim() && !n.read;
+    }
+    return String(n.empid).trim() === String(activeEmpId).trim() && !n.read;
+  }).length;
 
   // If not logged in, render the clean split-card LoginScreen
   if (!currentUser) {
@@ -526,6 +729,7 @@ export function App() {
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         pendingLeavesCount={pendingLeavesCount}
+        unreadNotificationsCount={unreadNotificationsCount}
         onOpenHelp={() => setCurrentTab('architecture')}
         userRole={currentUser?.role}
       />
@@ -556,6 +760,10 @@ export function App() {
               onOpenAddModal={() => setIsAddOpen(true)}
               onOpenRaiseModal={setSelectedForRaise}
               onOpenLeavesModal={setSelectedForLeaves}
+              onOpenMessageModal={(emp) => {
+                setSelectedForMessage(emp);
+                setIsMessageModalOpen(true);
+              }}
               onToggleStatus={handleToggleStatus}
               onDeleteEmployee={handleDeleteEmployee}
               onResetData={handleResetData}
@@ -570,7 +778,19 @@ export function App() {
             />
           )}
 
-          {(currentTab === 'self_service' || (currentUser?.role === 'employee' && currentTab !== 'architecture')) && (
+          {currentTab === 'notifications' && (
+            <NotificationsView
+              currentEmployee={activeEmpRecord}
+              notifications={notifications}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+              employees={employees}
+              onSwitchEmployee={setSimulatedEmpId}
+              userRole={currentUser?.role}
+            />
+          )}
+
+          {(currentTab === 'self_service' || (currentUser?.role === 'employee' && currentTab !== 'architecture' && currentTab !== 'notifications')) && (
             <SelfServiceView
               currentEmployee={activeEmpRecord}
               employees={employees}
@@ -610,6 +830,17 @@ export function App() {
         onApproveLeave={handleApproveLeave}
         onRejectLeave={handleRejectLeave}
         onAddLeave={handleAddLeave}
+      />
+
+      <SendMessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => {
+          setIsMessageModalOpen(false);
+          setSelectedForMessage(null);
+        }}
+        employee={selectedForMessage}
+        employees={employees}
+        onSendMessage={handleSendDirectMessage}
       />
     </div>
   );

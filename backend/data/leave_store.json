@@ -1,6 +1,28 @@
 {
   "newLeaves": [
     {
+      "LeaveId": "0000019944",
+      "Empid": "100101",
+      "LeaveType": "Training & Cert",
+      "StartDate": "2026-10-14",
+      "EndDate": "2026-10-17",
+      "DaysCount": 4,
+      "Reason": "Certification",
+      "Status": "APPROVED",
+      "HrComment": ""
+    },
+    {
+      "LeaveId": "0000023576",
+      "Empid": "100101",
+      "LeaveType": "Sick Leave",
+      "StartDate": "2026-10-13",
+      "EndDate": "2026-10-22",
+      "DaysCount": 10,
+      "Reason": "Not feeling well",
+      "Status": "APPROVED",
+      "HrComment": ""
+    },
+    {
       "LeaveId": "0000000951",
       "Empid": "100101",
       "LeaveType": "Annual Vacation",
@@ -14,6 +36,10 @@
   "statusOverrides": {
     "0000000002": "REJECTED",
     "0000000951": "REJECTED",
-    "0000000004": "REJECTED"
+    "0000023576": "APPROVED",
+    "0000019944": "APPROVED"
+  },
+  "commentOverrides": {
+    "0000000002": "No"
   }
 }

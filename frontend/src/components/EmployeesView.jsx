@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Plus, Search, RefreshCw, TrendingUp, Calendar, Trash2, RotateCw
+  Plus, Search, RefreshCw, TrendingUp, Calendar, Trash2, RotateCw, MessageSquare
 } from 'lucide-react';
 import { DEPARTMENTS } from '../data/mockData';
 
@@ -9,6 +9,7 @@ export function EmployeesView({
   onOpenAddModal, 
   onOpenRaiseModal, 
   onOpenLeavesModal, 
+  onOpenMessageModal,
   onToggleStatus, 
   onDeleteEmployee,
   onResetData 
@@ -41,14 +42,27 @@ export function EmployeesView({
           <p className="view-page-subtitle">Manage employee master records registered in the SAP NetWeaver system.</p>
         </div>
 
-        <button 
-          type="button" 
-          className="btn-primary-action"
-          onClick={onOpenAddModal}
-        >
-          <Plus size={16} />
-          <span>Register Employee</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button 
+            type="button" 
+            className="btn-refresh-data"
+            onClick={() => onOpenMessageModal && onOpenMessageModal(null)}
+            title="Send personal memo/notice to individual employee"
+            style={{ padding: '8px 14px' }}
+          >
+            <MessageSquare size={15} />
+            <span>Message Staff</span>
+          </button>
+
+          <button 
+            type="button" 
+            className="btn-primary-action"
+            onClick={onOpenAddModal}
+          >
+            <Plus size={16} />
+            <span>Register Employee</span>
+          </button>
+        </div>
       </div>
 
       {/* Mini KPI Card (Matching Screenshot 2) */}
@@ -197,6 +211,17 @@ export function EmployeesView({
                             title="Update Salary in SAP"
                           >
                             <span>Raise</span>
+                          </button>
+
+                          {/* Personal Message from HR */}
+                          <button
+                            type="button"
+                            className="btn-action-msg"
+                            onClick={() => onOpenMessageModal && onOpenMessageModal(emp)}
+                            title={`Send direct message to ${emp.Name}`}
+                          >
+                            <MessageSquare size={13} style={{ marginRight: '3px' }} />
+                            <span>Message</span>
                           </button>
 
                           {/* Toggle Status */}

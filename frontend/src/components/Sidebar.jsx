@@ -1,13 +1,14 @@
 import React from 'react';
 import { 
   LayoutDashboard, Users, CalendarCheck, UserCheck, 
-  BarChart3, HelpCircle, Database
+  BarChart3, HelpCircle, Database, Bell
 } from 'lucide-react';
 
 export function Sidebar({ 
   currentTab, 
   onSelectTab, 
   pendingLeavesCount = 0,
+  unreadNotificationsCount = 0,
   onOpenHelp,
   userRole = 'admin'
 }) {
@@ -42,6 +43,14 @@ export function Sidebar({
       badge: null,
       adminOnly: false,
       employeeOnly: true
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: Bell,
+      badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null,
+      adminOnly: false,
+      employeeOnly: false
     },
     {
       id: 'analytics',

@@ -31,6 +31,11 @@ export function TopNavbar({
           title: 'Employee Self-Service',
           subtitle: 'Personal profile, apply for leave, and view live application status.'
         };
+      case 'notifications':
+        return {
+          title: 'Notifications & Communications',
+          subtitle: 'Real-time updates on salary raises, leave approvals, and personal memos from HR.'
+        };
       case 'analytics':
         return {
           title: 'Workforce Analytics',

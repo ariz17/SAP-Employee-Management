@@ -1,0 +1,18 @@
+{
+  "notifications": [
+    {
+      "id": "notif_1792395645606_697",
+      "empid": "100101",
+      "type": "HR_MESSAGE",
+      "title": "Direct HR Notice",
+      "message": "Meet me at lunch time.",
+      "sender": "Arbab Rizvi (HR Admin)",
+      "priority": "HIGH",
+      "timestamp": "2026-10-19T07:40:45.606Z",
+      "read": false,
+      "metadata": {
+        "subject": "Direct HR Notice"
+      }
+    }
+  ]
+}

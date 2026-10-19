@@ -41,14 +41,15 @@ function loadLeaveStore() {
       if (data && typeof data === 'object') {
         return {
           newLeaves: Array.isArray(data.newLeaves) ? data.newLeaves : [],
-          statusOverrides: data.statusOverrides || {}
+          statusOverrides: data.statusOverrides || {},
+          commentOverrides: data.commentOverrides || {}
         };
       }
     }
   } catch (e) {
     console.warn('⚠️ Could not load leave store file:', e.message);
   }
-  return { newLeaves: [], statusOverrides: {} };
+  return { newLeaves: [], statusOverrides: {}, commentOverrides: {} };
 }
 
 function saveLeaveStore(store) {
@@ -96,6 +97,69 @@ function saveEmployeeStore(store) {
 }
 
 let employeeStore = loadEmployeeStore();
+
+// File-backed persistent storage for employee notifications (raises, leave decisions, HR personal memos)
+const NOTIF_STORE_FILE = path.join(__dirname, 'data', 'notification_store.json');
+
+function loadNotificationStore() {
+  try {
+    if (fs.existsSync(NOTIF_STORE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(NOTIF_STORE_FILE, 'utf-8'));
+      if (data && Array.isArray(data.notifications)) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not load notification store file:', e.message);
+  }
+  return { notifications: [] };
+}
+
+function saveNotificationStore(store) {
+  try {
+    const dir = path.dirname(NOTIF_STORE_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(NOTIF_STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('❌ Failed to save notification store to file:', e.message);
+  }
+}
+
+let notificationStore = loadNotificationStore();
+
+function createNotificationRecord({ id, empid, type, title, message, sender = 'HR Desk', priority = 'NORMAL', metadata = {} }) {
+  if (!Array.isArray(notificationStore.notifications)) {
+    notificationStore.notifications = [];
+  }
+
+  // Deduplicate: avoid duplicate insertions with same empid, type and message
+  const existing = notificationStore.notifications.find(n => 
+    (id && n.id === id) || 
+    (n.empid === String(empid).trim() && n.type === type && n.message === message)
+  );
+  if (existing) {
+    console.log(`ℹ️ [Notification] Deduplicated notification for employee ${empid}: "${title}"`);
+    return existing;
+  }
+
+  const newNotif = {
+    id: id || ('notif_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+    empid: String(empid).trim(),
+    type,
+    title,
+    message,
+    sender,
+    priority,
+    timestamp: new Date().toISOString(),
+    read: false,
+    metadata
+  };
+
+  notificationStore.notifications.unshift(newNotif);
+  saveNotificationStore(notificationStore);
+  console.log(`🔔 [Notification] Dispatched ${type} notification to employee ${empid}: "${title}"`);
+  return newNotif;
+}
 
 // Helper: Convert SAP OData date format "/Date(1791158400000)/" or raw string to "YYYY-MM-DD"
 function formatSapDate(dateVal) {
@@ -152,16 +216,19 @@ async function fetchLeavesFromSap() {
     });
 
     const results = response.data?.d?.results || [];
-    return results.map(leave => ({
-      LeaveId: String(leave.LeaveId || leave.LEAVE_ID || '').trim(),
-      Empid: String(leave.Empid || leave.EMPID || '').trim(),
-      LeaveType: String(leave.LeaveType || leave.LEAVE_TYPE || 'Annual Vacation').trim(),
-      StartDate: formatSapDate(leave.StartDate || leave.START_DATE),
-      EndDate: formatSapDate(leave.EndDate || leave.END_DATE),
-      DaysCount: parseInt(leave.DaysCount || leave.DAYS_COUNT, 10) || 1,
-      Reason: String(leave.Reason || leave.REASON || '').trim(),
-      Status: String(leave.Status || leave.STATUS || 'PENDING').trim()
-    }));
+    return results
+      .map(leave => ({
+        LeaveId: String(leave.LeaveId || leave.LEAVE_ID || '').trim(),
+        Empid: String(leave.Empid || leave.EMPID || '').trim(),
+        LeaveType: String(leave.LeaveType || leave.LEAVE_TYPE || 'Annual Vacation').trim(),
+        StartDate: formatSapDate(leave.StartDate || leave.START_DATE),
+        EndDate: formatSapDate(leave.EndDate || leave.END_DATE),
+        DaysCount: parseInt(leave.DaysCount || leave.DAYS_COUNT, 10) || 1,
+        Reason: String(leave.Reason || leave.REASON || '').trim(),
+        Status: String(leave.Status || leave.STATUS || 'PENDING').trim()
+      }))
+      // Filter out invalid dummy records with missing start or end dates
+      .filter(l => Boolean(l.StartDate && l.EndDate));
   } catch (err) {
     console.warn(`⚠️ [SAP Gateway] Could not fetch leaves: ${err.message}`);
     return [];
@@ -176,41 +243,46 @@ async function getLiveSapWorkforce() {
     fetchLeavesFromSap()
   ]);
 
-  // Combine live SAP leaves with persistent status overrides
+  // Combine live SAP leaves with persistent status overrides and HR comments
   const combinedLeaves = rawLeaves.map(leave => {
-    if (leaveStore.statusOverrides[leave.LeaveId]) {
-      return {
-        ...leave,
-        Status: leaveStore.statusOverrides[leave.LeaveId]
-      };
-    }
-    return leave;
+    const status = leaveStore.statusOverrides[leave.LeaveId] || leave.Status;
+    const hrComment = leaveStore.commentOverrides?.[leave.LeaveId] || '';
+    return {
+      ...leave,
+      Status: status,
+      HrComment: hrComment
+    };
   });
 
   // Append any newly submitted leaves (like Parag's submitted requests)
   leaveStore.newLeaves.forEach(newLeave => {
     const existingIdx = combinedLeaves.findIndex(l => l.LeaveId === newLeave.LeaveId);
     const resolvedStatus = leaveStore.statusOverrides[newLeave.LeaveId] || newLeave.Status;
+    const resolvedComment = leaveStore.commentOverrides?.[newLeave.LeaveId] || newLeave.HrComment || '';
     if (existingIdx !== -1) {
       combinedLeaves[existingIdx] = {
         ...combinedLeaves[existingIdx],
         ...newLeave,
-        Status: resolvedStatus
+        Status: resolvedStatus,
+        HrComment: resolvedComment
       };
     } else {
       combinedLeaves.unshift({
         ...newLeave,
-        Status: resolvedStatus
+        Status: resolvedStatus,
+        HrComment: resolvedComment
       });
     }
   });
 
-  // Group leaves by Empid
+  // Group leaves by Empid (only including leaves with valid dates)
   const leavesByEmp = {};
-  combinedLeaves.forEach(l => {
-    if (!leavesByEmp[l.Empid]) leavesByEmp[l.Empid] = [];
-    leavesByEmp[l.Empid].push(l);
-  });
+  combinedLeaves
+    .filter(l => Boolean(l.StartDate && l.EndDate))
+    .forEach(l => {
+      if (!leavesByEmp[l.Empid]) leavesByEmp[l.Empid] = [];
+      leavesByEmp[l.Empid].push(l);
+    });
 
   // 1. Filter out deleted employees
   let resolvedEmployees = employees.filter(e => !employeeStore.deletedEmpids.includes(e.Empid));
@@ -480,6 +552,17 @@ app.patch('/api/employees/:id/raise', async (req, res) => {
       console.warn(`ℹ️ [SAP Gateway] Notice on raise sync: ${err.message}`);
     }
 
+    // Automatically dispatch notification to target employee
+    createNotificationRecord({
+      empid,
+      type: 'SALARY_RAISE',
+      title: `Salary Increment Applied (+${pct}%)`,
+      message: `Congratulations! HR has approved a ${pct}% increment on your compensation. Your new monthly salary is ₹${updatedSalary.toLocaleString('en-IN')}.${req.body.reason ? ` Note: "${req.body.reason}"` : ''}`,
+      sender: 'HR Administration Desk',
+      priority: 'HIGH',
+      metadata: { percentage: pct, newSalary: updatedSalary, reason: req.body.reason || '' }
+    });
+
     res.json({
       success: true,
       message: `Raise of ${pct}% applied. New salary: ${updatedSalary}`,
@@ -588,14 +671,15 @@ app.post('/api/employees/:id/leave', async (req, res) => {
     StartDate: req.body.StartDate || new Date().toISOString().split('T')[0],
     EndDate: req.body.EndDate || new Date().toISOString().split('T')[0],
     DaysCount: parseInt(req.body.DaysCount, 10) || 1,
-    Reason: req.body.Reason || 'Leave Request',
-    Status: 'PENDING'
+    Reason: req.body.Reason || req.body.reason || 'Leave Request',
+    Status: 'PENDING',
+    HrComment: ''
   };
 
   // Persist immediately in leaveStore so it survives reload and role changes
   leaveStore.newLeaves.unshift(newLeave);
   saveLeaveStore(leaveStore);
-  console.log(`📝 [Leave Store] Recorded new leave ${newLeaveId} for employee ${empid} (Status: PENDING)`);
+  console.log(`📝 [Leave Store] Recorded new leave ${newLeaveId} for employee ${empid} (Reason: "${newLeave.Reason}")`);
 
   // Background SAP sync attempt
   (async () => {
@@ -637,18 +721,40 @@ app.post('/api/employees/:id/leave', async (req, res) => {
 app.patch('/api/employees/:id/leave/:leaveId', async (req, res) => {
   const { id: empid, leaveId } = req.params;
   const status = req.body.status || 'APPROVED';
+  const hrComment = req.body.hrComment || req.body.comment || '';
 
-  // Persist status change immediately so it survives reload and role changes
+  // Persist status and HR comment immediately so it survives reload and role changes
   leaveStore.statusOverrides[leaveId] = status;
+  if (!leaveStore.commentOverrides) leaveStore.commentOverrides = {};
+  if (hrComment) {
+    leaveStore.commentOverrides[leaveId] = hrComment;
+  }
 
   // Also update in newLeaves if present
   const nl = leaveStore.newLeaves.find(l => l.LeaveId === leaveId);
-  if (nl) nl.Status = status;
+  if (nl) {
+    nl.Status = status;
+    if (hrComment) nl.HrComment = hrComment;
+  }
 
   saveLeaveStore(leaveStore);
-  console.log(`🔄 [Leave Store] Updated leave ${leaveId} status to ${status}`);
+  console.log(`🔄 [Leave Store] Updated leave ${leaveId} status to ${status} with HR comment: "${hrComment}"`);
 
-  // Background SAP sync attempt
+  // Automatically dispatch notification to target employee
+  const isApproved = status === 'APPROVED';
+  createNotificationRecord({
+    empid,
+    type: 'LEAVE_STATUS',
+    title: isApproved ? 'Leave Request Approved' : 'Leave Request Declined',
+    message: isApproved
+      ? `Your leave request (#${leaveId}) has been APPROVED by HR Desk.${hrComment ? ` HR Note: "${hrComment}"` : ''}`
+      : `Your leave request (#${leaveId}) has been REJECTED by HR Desk.${hrComment ? ` Reason: "${hrComment}"` : ''}`,
+    sender: 'HR Desk',
+    priority: 'HIGH',
+    metadata: { leaveId, status, hrComment }
+  });
+
+  // Background SAP sync attempt (Pure ABAP schema: only LeaveId, Empid, Status)
   (async () => {
     try {
       const { token, cookies } = await getSapCsrfToken();
@@ -677,7 +783,7 @@ app.patch('/api/employees/:id/leave/:leaveId', async (req, res) => {
   res.json({
     success: true,
     message: `Leave ${leaveId} updated to ${status}`,
-    data: { LeaveId: leaveId, Empid: empid, Status: status }
+    data: { LeaveId: leaveId, Empid: empid, Status: status, HrComment: hrComment }
   });
 });
 
@@ -701,6 +807,67 @@ app.get('/api/sap-status', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// 13. Notifications API Endpoints
+app.get('/api/notifications', (req, res) => {
+  const { empid } = req.query;
+  let list = notificationStore.notifications || [];
+  if (empid) {
+    list = list.filter(n => n.empid === String(empid).trim());
+  }
+  res.json({
+    success: true,
+    count: list.length,
+    unreadCount: list.filter(n => !n.read).length,
+    data: list
+  });
+});
+
+app.post('/api/notifications', (req, res) => {
+  const { id, empid, type = 'HR_MESSAGE', title, message, sender, priority, metadata } = req.body;
+  if (!empid || !message) {
+    return res.status(400).json({ success: false, message: 'empid and message are required' });
+  }
+  const notif = createNotificationRecord({
+    id,
+    empid,
+    type,
+    title: title || 'Direct Message from HR',
+    message,
+    sender: sender || 'HR Administration',
+    priority: priority || 'NORMAL',
+    metadata: metadata || {}
+  });
+  res.status(201).json({
+    success: true,
+    message: 'Notification dispatched successfully',
+    data: notif
+  });
+});
+
+app.patch('/api/notifications/:id/read', (req, res) => {
+  const { id } = req.params;
+  const notif = (notificationStore.notifications || []).find(n => n.id === id);
+  if (!notif) {
+    return res.status(404).json({ success: false, message: 'Notification not found' });
+  }
+  notif.read = true;
+  saveNotificationStore(notificationStore);
+  res.json({ success: true, data: notif });
+});
+
+app.patch('/api/notifications/read-all', (req, res) => {
+  const { empid } = req.body;
+  if (empid) {
+    (notificationStore.notifications || []).forEach(n => {
+      if (n.empid === String(empid).trim()) n.read = true;
+    });
+  } else {
+    (notificationStore.notifications || []).forEach(n => { n.read = true; });
+  }
+  saveNotificationStore(notificationStore);
+  res.json({ success: true, message: 'Marked notifications as read' });
 });
 
 // Error Handling Middleware for JSON parsing and unexpected route errors
